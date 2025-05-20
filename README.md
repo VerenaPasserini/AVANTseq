@@ -21,7 +21,7 @@ Both workflows are modular, configurable via YAML, and built for reproducibility
 ## 📁 Repository Structure
 
 ```plaintext
-avantseq/
+AVANTseq/
 ├── rules/
 │   ├── trim.smk                # Trim raw fastq reads with atropos
 │   ├── align.smk               # Align trimmed reads using bwa mem
@@ -34,6 +34,7 @@ avantseq/
 │   ├── samples_tumor.yaml      # Configuration file containing tumor samples list
 ├── CreatePoN.smk               # Top-level Snakefile to create custom PoN from normal samples
 ├── AVANTseq.smk                # Top-level Snakefile to call somatic variants form tumor samples using the PoN previously generated
+├── LICENSE.txt                 # MIT license file
 └── README.md                   # This file
 ```
 
@@ -58,6 +59,8 @@ To run this pipeline, the following tools must be installed and available in you
 ### Purpose
 
 Creates a high-quality PoN VCF file from multiple normal BAM files. This PoN helps filter out recurrent sequencing artifacts and germline variants during somatic variant calling.
+
+![DAG for Create PoN pipeline](docs/dag_createpon.png "Workflow DAG for createPoN.smk")
 
 ### Configuration
 
@@ -131,18 +134,14 @@ The PoN pipeline generates the following output files, grouped by analysis step.
 
 Performs somatic variant calling on tumor samples (optionally with matched normals) using Mutect2. The PoN is used to remove recurrent technical artifacts.
 
+![DAG for AVANTseq pipeline](docs/dag_avantseq.png "Workflow DAG for AVANTseq.smk")
+
 ### Configuration
 
-Edit the configuration file `config/config.yaml` with the following:
+Please refer to the sections below for detailed descriptions of:
 
-- Path to input BAM files  
-- Reference genome path  
-- Target regions (BED or interval list)  
-- Optional public PoN file path for merging
-
-Edit the configuration file `config/samples_tumor.yaml` with the following:
-
-- List of tumor sample names  
+- The main configuration file `config/config.yaml`, including reference files, target regions, and optional panel of normals.
+- The sample list `config/samples_normal.yaml`, which should contain the list of normal samples.
 
 ### Run the AVANTseq Pipeline
 
@@ -247,9 +246,9 @@ The `samples_normal.yaml` and `samples_tumor.yaml` files contains a simple list 
 Example:
 ```yaml
 samples:
-  - Sample1
-  - Sample2
-  - Sample3
+  - "Sample1"
+  - "Sample2"
+  - "Sample3"
 ```
 
 ## 💡 Tip
@@ -270,6 +269,6 @@ This project is licensed under the MIT License. See the `LICENSE.txt` file for d
 
 For issues, questions, or contributions, please contact:
 
-**Your Name**  
-📧 your.email@institute.org  
-🔗 [github.com/yourusername](https://github.com/yourusername)
+**Verena Passerini**  
+📧 info@verenapasserini.com 
+🔗 [github.com/VerenaPass/AVANTseq](https://github.com/VerenaPass/AVANTseq)
