@@ -1,0 +1,15 @@
+
+# ---------------------------------------------------------
+# List of tumor sample names for paired-end targeted sequencing analysis pipeline.
+# FASTQ files must be located in the 'fastq/' folder inside the working directory.
+# Sample filenames should follow the pattern: {tumor1}_R1.fastq.gz and {tumor1}_R2.fastq.gz.
+# ---------------------------------------------------------
+
+samples:
+  - "tumor1"
+  - "tumor2"
+  - "tumor3"
+  - "tumor4"
+  - "tumor5"
+  - "tumor6"
+  - "tumor7"

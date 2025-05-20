@@ -1,0 +1,14 @@
+
+# ---------------------------------------------------------
+# List of sample names for paired-end targeted sequencing analysis pipeline.
+# FASTQ files must be located in the 'fastq/' folder inside the working directory.
+# Sample filenames should follow the pattern: {normal1}_R1.fastq.gz and {normal1}_R2.fastq.gz.
+# ---------------------------------------------------------
+
+samples:
+  - "normal1"
+  - "normal2"
+  - "normal3" 
+  - "normal4"
+  - "normal5"
+  
