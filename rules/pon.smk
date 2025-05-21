@@ -30,28 +30,29 @@ rule mutect2:
     shell:
         "gatk Mutect2 -R {input.ref} -I {input.bam} " 
         "--germline-resource {input.germline_resource} " 
-        "--intervals {input.targets}" 
-        "--interval-padding 50 -max-mnp-distance 0" 
+        "--intervals {input.targets} " 
+        "--interval-padding 50 -max-mnp-distance 0 " 
         "-O {output} > {log} 2>&1"
 
-# Run Genomics DB Import on mutect2 vcfs        
 rule genomicsdb_import:
     input:
         vcfs=expand(join(config["work_dir"], "variants/mutect2/{sample}.vcf.gz"), sample=config["samples"]),
         ref=config["ref_fa"]
     output:
-        join(config["work_dir"], "variants/mutect2/pon_db")
+        directory(join(config["work_dir"], "variants/mutect2/pon_db"))
     params:
         interval_list=config["targets"],
         vcf_args=lambda wildcards, input: " ".join(f"-V {vcf}" for vcf in input.vcfs)
+    log:
+        join(config["work_dir"], "log/genomicsdb_import.log")
     message:
         "Running Genomics DB Import on mutect2 VCFs"
     shell:
-        "gatk GenomicsDBImport "
-        "-R {input.ref} "
+        "gatk GenomicsDBImport -R {input.ref} "
         "-L {params.interval_list} "
         "{params.vcf_args} "
         "--genomicsdb-workspace-path {output} "
+        " &> {log}"
 
 # Run CreateSomaticPanelOfNormals on mutect2 calls
 rule create_pon:
@@ -66,15 +67,30 @@ rule create_pon:
         "Running create panel of normal"
     shell:
         "gatk CreateSomaticPanelOfNormals " 
-        "-R {input.ref}" 
-        "-V gendb://{input.db}" 
+        "-R {input.ref} " 
+        "-V gendb://{input.db} " 
         "-O {output} > {log} 2>&1"
 
+# Sort the custom pon VCF
+rule sort_pon_vcf:
+    input:
+        unsorted_vcf = join(config["work_dir"], "variants/mutect2/custom_pon.vcf.gz")
+    output:
+        sorted_vcf = join(config["work_dir"], "variants/mutect2/pon_sorted.vcf.gz")
+    log:
+        join(config["work_dir"], "variants/log/sort_pon_vcf.log")
+    message:
+        "Sorting Panel of Normals VCF using GATK SortVcf"
+    shell:
+        "gatk SortVcf "
+        "-I {input.unsorted_vcf} "
+        "-O {output.sorted_vcf} &> {log}"
+        
 # Merge custom pon with public pon to generate the final pon
 rule merge_pon_files:
     input:
         pon=config["pon"],
-        c_pon=join(config["work_dir"], "variants/mutect2/custom_pon.vcf.gz")
+        c_pon=join(config["work_dir"], "variants/mutect2/pon_sorted.vcf.gz")
     output:
         config["merged_pon"]
     log:
@@ -84,6 +100,6 @@ rule merge_pon_files:
     shell:
         "gatk MergeVcfs "
         "-I {input.pon} "
-        "-I {input.c_pon}"
+        "-I {input.c_pon} "
         "-O {output} > {log} 2>&1"
         

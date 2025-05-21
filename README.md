@@ -58,7 +58,7 @@ To run this pipeline, the following tools must be installed and available in you
 
 ### Purpose
 
-Creates a high-quality PoN VCF file from multiple normal BAM files. This PoN helps filter out recurrent sequencing artifacts and germline variants during somatic variant calling.
+Creates a high-quality PoN VCF file from multiple normal BAM files. This PoN helps filter out recurrent sequencing artifacts and germline variants during somatic variant calling. The following DAG plot visualizes the PoN Snakemake workflow structure, highlighting rule dependencies and execution order:
 
 ![DAG for Create PoN pipeline](docs/dag_createpon.png "Workflow DAG for createPoN.smk")
 
@@ -132,7 +132,7 @@ The PoN pipeline generates the following output files, grouped by analysis step.
 
 ### Purpose
 
-Performs somatic variant calling on tumor samples (optionally with matched normals) using Mutect2. The PoN is used to remove recurrent technical artifacts.
+Performs somatic variant calling on tumor samples (optionally with matched normals) using Mutect2 after fastq raw data pre-processing. The PoN is used to remove recurrent technical artifacts. The following DAG plot visualizes the AVANTseq Snakemake workflow structure, highlighting rule dependencies and execution order:
 
 ![DAG for AVANTseq pipeline](docs/dag_avantseq.png "Workflow DAG for AVANTseq.smk")
 
@@ -207,7 +207,7 @@ The AVANTseq pipeline generates the following output files for each sample, grou
   Filtered variant calls using **FilterMutectCalls**, removing likely false positives.
 
 - `variants/filtered/{sample}_filtered_norm_dec.vcf.gz`  
-  Normalized and decomposed VCF, prepared for annotation using tools like **vt** 
+  Normalized and decomposed VCF, prepared for annotation using **vt** 
   [Unified representation of genetic variants](https://academic.oup.com/bioinformatics/article/31/13/2202/196142)
 
 - `variants/maf/{sample}.maf`  
@@ -237,7 +237,7 @@ Please refer to the `config.yaml` file provided in the `config/` folder for deta
 
 ## 📝 samples_*.yaml
 
-The `samples_normal.yaml` and `samples_tumor.yaml` files contains a simple list of sample names corresponding to paired-end targeted sequencing data.
+The `samples_normal.yaml` and `samples_tumor.yaml` files contain a simple list of sample names corresponding to paired-end targeted sequencing raw data files.
 
 - **Content:** Only sample names, without file extensions or formats.
 - **Data location:** FASTQ files should be stored in the `fastq/` directory inside the `work_dir` specified in the config file.
@@ -253,11 +253,11 @@ samples:
 
 ## 💡 Tip
 
-- Test workflow with a dry run:
+- Test the workflow with a dry run:
 
-  ```bash
-  snakemake -s AVANTseq.smk --dry-run
-  ```
+```bash
+snakemake -s AVANTseq.smk --dry-run
+```
 
 ## 📜 License
 
