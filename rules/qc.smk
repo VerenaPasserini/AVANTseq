@@ -19,7 +19,7 @@ rule fastqc:
     input:
         join(config["work_dir"], "alignment/bams/{sample}.bam")
     output:
-        join(config["work_dir"], "alignment/qc/{sample}_fastqc.html")
+        join(config["work_dir"], "alignment/qc/fastqc/{sample}_fastqc.html")
     log:
         join(config["work_dir"], "alignment/log/{sample}_fastqc.log")
     params:

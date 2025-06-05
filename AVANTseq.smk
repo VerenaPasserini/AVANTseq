@@ -31,7 +31,7 @@ include: "rules/variants.smk"
 rule all:
     input:
         expand(join(config["work_dir"], "alignment/bams/{sample}.bam.bai"), sample=config["samples"]),
-        expand(join(config["work_dir"], "alignment/qc/{sample}_fastqc.html"), sample=config["samples"]),
+        expand(join(config["work_dir"], "alignment/qc/fastqc/{sample}_fastqc.html"), sample=config["samples"]),
         expand(join(config["work_dir"], "alignment/qc/multiqc_report.html"), sample=config["samples"]),
         expand(join(config["work_dir"], "variants/qc/CoverageSummary.txt"), sample=config["samples"]),
         expand(join(config["work_dir"], "variants/qc/HsMetrics/{sample}_metrics.txt"), sample=config["samples"]),

@@ -22,7 +22,7 @@ rule mutect2:
         germline_resource=config["germline_resource"],
         targets=config["targets"]
     output:
-        join(config["work_dir"], "variants/mutect2/{sample}.vcf.gz")
+        join(config["work_dir"], "variants/mutect2/pon/{sample}.vcf.gz")
     log:
         join(config["work_dir"], "variants/log/{sample}_mutect2.log")
     message:
@@ -36,10 +36,10 @@ rule mutect2:
 
 rule genomicsdb_import:
     input:
-        vcfs=expand(join(config["work_dir"], "variants/mutect2/{sample}.vcf.gz"), sample=config["samples"]),
+        vcfs=expand(join(config["work_dir"], "variants/mutect2/pon/{sample}.vcf.gz"), sample=config["samples"]),
         ref=config["ref_fa"]
     output:
-        directory(join(config["work_dir"], "variants/mutect2/pon_db"))
+        directory(join(config["work_dir"], "variants/mutect2/pon/pon_db"))
     params:
         interval_list=config["targets"],
         vcf_args=lambda wildcards, input: " ".join(f"-V {vcf}" for vcf in input.vcfs)
@@ -57,10 +57,10 @@ rule genomicsdb_import:
 # Run CreateSomaticPanelOfNormals on mutect2 calls
 rule create_pon:
     input:
-        db=join(config["work_dir"], "variants/mutect2/pon_db"),
+        db=join(config["work_dir"], "variants/mutect2/pon/pon_db"),
         ref=config["ref_fa"]
     output:
-        join(config["work_dir"], "variants/mutect2/custom_pon.vcf.gz")
+        join(config["work_dir"], "variants/mutect2/pon/custom_pon.vcf.gz")
     log:
         join(config["work_dir"], "variants/log/createpon.log")
     message:
@@ -74,9 +74,9 @@ rule create_pon:
 # Sort the custom pon VCF
 rule sort_pon_vcf:
     input:
-        unsorted_vcf = join(config["work_dir"], "variants/mutect2/custom_pon.vcf.gz")
+        unsorted_vcf = join(config["work_dir"], "variants/mutect2/pon/custom_pon.vcf.gz")
     output:
-        sorted_vcf = join(config["work_dir"], "variants/mutect2/pon_sorted.vcf.gz")
+        sorted_vcf = join(config["work_dir"], "variants/mutect2/pon/pon_sorted.vcf.gz")
     log:
         join(config["work_dir"], "variants/log/sort_pon_vcf.log")
     message:
@@ -90,7 +90,7 @@ rule sort_pon_vcf:
 rule merge_pon_files:
     input:
         pon=config["pon"],
-        c_pon=join(config["work_dir"], "variants/mutect2/pon_sorted.vcf.gz")
+        c_pon=join(config["work_dir"], "variants/mutect2/pon/pon_sorted.vcf.gz")
     output:
         config["merged_pon"]
     log:
