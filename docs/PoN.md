@@ -4,7 +4,7 @@
 
 Creates a high-quality PoN VCF file from multiple normal BAM files. This PoN helps filter out recurrent sequencing artifacts and germline variants during somatic variant calling. The following DAG plot visualizes the PoN Snakemake workflow structure, highlighting rule dependencies and execution order:
 
-![DAG for Create PoN pipeline](docs/dag_createpon.png "Workflow DAG for createPoN.smk")
+![DAG for Create PoN pipeline](dag_createpon.png "Workflow DAG for createPoN.smk")
 
 ### Configuration
 

@@ -5,7 +5,7 @@
 
 Performs somatic variant calling on tumor samples (optionally with matched normals) using Mutect2 after fastq raw data pre-processing. The PoN is used to remove recurrent technical artifacts. The following DAG plot visualizes the AVANTseq Snakemake workflow structure, highlighting rule dependencies and execution order:
 
-![DAG for AVANTseq pipeline](docs/dag_avantseq.png "Workflow DAG for AVANTseq.smk")
+![DAG for AVANTseq pipeline](dag_avantseq.png "Workflow DAG for AVANTseq.smk")
 
 ### Configuration
 
