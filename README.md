@@ -1,6 +1,6 @@
 # AVANTseq: Automated Variant Analysis for Next-gen Targeted Sequencing in Cancer research
 
-**AVANTseq** is a modular, Snakemake-based workflow for high-confidence somatic variant calling from targeted NGS data. It includes:
+**AVANTseq** is a modular, Snakemake-based workflow for high-confidence somatic variant calling from paired end targeted NGS data. It includes:
 
 - A pipeline for generating a custom **Panel of Normals (PoN)**
 - A downstream **variant calling pipeline** using GATK Mutect2 with the generated PoN
@@ -54,168 +54,12 @@ To run this pipeline, the following tools must be installed and available in you
 
 ---
 
-## 1. Panel of Normals (PoN) Pipeline
-
-### Purpose
-
-Creates a high-quality PoN VCF file from multiple normal BAM files. This PoN helps filter out recurrent sequencing artifacts and germline variants during somatic variant calling. The following DAG plot visualizes the PoN Snakemake workflow structure, highlighting rule dependencies and execution order:
-
-![DAG for Create PoN pipeline](docs/dag_createpon.png "Workflow DAG for createPoN.smk")
-
-### Configuration
-
-Please refer to the sections below for detailed descriptions of:
-
-- The main configuration file `config/config.yaml`, including reference files, target regions, and optional panel of normals.
-- The sample list `config/samples_normal.yaml`, which should contain the list of normal samples.
-
-### Run the PoN Pipeline
-
-```bash
-snakemake -s CreatePoN.smk --cores 8 
-```
-
-### PoN Outputs
-
-The PoN pipeline generates the following output files, grouped by analysis step. These include quality control metrics, alignment files, and resources required to build a panel of normals for somatic variant calling with Mutect2.
+## 1. [Panel of Normals (PoN) Pipeline](docs/PoN.md)
+## 2. [AVANTseq Variant Calling Pipeline](docs/AVANTseq.md)
 
 ---
 
-#### Quality Control and Alignment
-
-- `alignment/bams/{sample}.bam`  
-  BAM file of aligned reads for each normal sample, generated using **BWA-MEM**, sorted and with duplicates marked.
-
-- `alignment/bams/{sample}.bam.bai`  
-  BAM index file for rapid access using **samtools index**.
-
-- `alignment/qc/{sample}_fastqc.html`  
-  Quality control report from **FastQC**, assessing read quality, GC bias, adapter contamination, etc.  
-  [FastQC documentation](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
-
-- `alignment/qc/multiqc_report.html`  
-  Summary report from **MultiQC**, aggregating FastQC results across all normal samples.  
-  [MultiQC documentation](https://multiqc.info/)
-
----
-
-#### Coverage and Hybrid Capture QC
-
-- `variants/qc/CoverageSummary.txt`  
-  Global coverage summary across target regions for all normal samples.
-
-- `variants/qc/HsMetrics/{sample}_metrics.txt`  
-  Hybrid selection metrics from **Picard CollectHsMetrics**, including bait coverage and on-target rates.  
-  [Picard CollectHsMetrics](https://broadinstitute.github.io/picard/command-line-overview.html#CollectHsMetrics)
-
----
-
-#### Somatic Variant Calling (for PoN generation)
-
-- `variants/mutect2/{sample}.vcf.gz`  
-  Per-sample variant calls from **Mutect2** in tumor-only mode, used for PoN construction.  
-  [GATK Mutect2](https://gatk.broadinstitute.org/hc/en-us/articles/360037593851-Mutect2)
-
----
-
-#### Panel of Normals Output
-
-- `variants/mutect2/custom_pon.vcf.gz`  
-  Raw panel of normals VCF file generated from all normal sample calls.
-
-- `merged_pon.vcf.gz`  
-  Final merged panel of normals VCF file, used as an input for somatic variant calling in tumor samples.
-
----
-
-## 2. AVANTseq Variant Calling Pipeline
-
-### Purpose
-
-Performs somatic variant calling on tumor samples (optionally with matched normals) using Mutect2 after fastq raw data pre-processing. The PoN is used to remove recurrent technical artifacts. The following DAG plot visualizes the AVANTseq Snakemake workflow structure, highlighting rule dependencies and execution order:
-
-![DAG for AVANTseq pipeline](docs/dag_avantseq.png "Workflow DAG for AVANTseq.smk")
-
-### Configuration
-
-Please refer to the sections below for detailed descriptions of:
-
-- The main configuration file `config/config.yaml`, including reference files, target regions, and optional panel of normals.
-- The sample list `config/samples_normal.yaml`, which should contain the list of normal samples.
-
-### Run the AVANTseq Pipeline
-
-```bash
-snakemake -s AVANTseq.smk --cores 8 
-```
-
-### Outputs
-
-The AVANTseq pipeline generates the following output files for each sample, grouped by analysis step. 
-
----
-
-#### Quality Control and Alignment
-
-- `alignment/bams/{sample}.bam`  
-  Aligned sequencing reads in **BAM** format, generated with **BWA-MEM** and post-processed (sorted, duplicate-marked).
-
-- `alignment/bams/{sample}.bam.bai`  
-  Index file for the BAM, created with **samtools index** for rapid access.
-
-- `alignment/qc/{sample}_fastqc.html`  
-  Per-sample quality control report from **FastQC**, assessing read quality, GC content, adapter content, etc.  
-  [FastQC documentation](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
-
-- `alignment/qc/multiqc_report.html`  
-  Aggregated report from **MultiQC**, summarizing FastQC and other QC metrics across all samples.  
-  [MultiQC documentation](https://multiqc.info/)
-
----
-
-#### Coverage and Hybrid Capture QC
-
-- `variants/qc/CoverageSummary.txt`  
-  Summary statistics on sequencing depth over the target regions, calculated across all samples.
-
-- `variants/qc/HsMetrics/{sample}_metrics.txt`  
-  Hybrid selection metrics generated with **Picard CollectHsMetrics**, including on/off-target efficiency, mean target coverage, and bait performance.  
-  [Picard CollectHsMetrics](https://broadinstitute.github.io/picard/command-line-overview.html#CollectHsMetrics)
-
----
-
-#### Variant Calling (Mutect2)
-
-- `variants/mutect2/{sample}.vcf.gz`  
-  Raw somatic variant calls generated by **GATK Mutect2**, identifying SNVs and indels.  
-  [GATK Mutect2](https://gatk.broadinstitute.org/hc/en-us/articles/360037593851-Mutect2)
-
-- `variants/mutect2/{sample}.getpileupsummaries.table`  
-  Table summarizing read counts at common germline sites, used for contamination estimation.
-
-- `variants/mutect2/{sample}.calculatecontamination.table`  
-  Estimated contamination levels per sample, based on pileup summaries.
-
-- `variants/mutect2/{sample}.segments.table`  
-  Copy number segments inferred by **GATK ModelSegments**, used for downstream filtering.
-
----
-
-#### Filtering and Annotation
-
-- `variants/filtered/{sample}_filtered.vcf.gz`  
-  Filtered variant calls using **FilterMutectCalls**, removing likely false positives.
-
-- `variants/filtered/{sample}_filtered_norm_dec.vcf.gz`  
-  Normalized and decomposed VCF, prepared for annotation using **vt** 
-  [Unified representation of genetic variants](https://academic.oup.com/bioinformatics/article/31/13/2202/196142)
-
-- `variants/maf/{sample}.maf`  
-  Final annotated variant list in **Mutation Annotation Format (MAF)**, produced with **Funcotator**, suitable for reporting and downstream analysis.  
-  [Funcotator documentation](https://gatk.broadinstitute.org/hc/en-us/articles/360037593891-Funcotator)
-
-
-## 🛠 Configuration File
+## Configuration Files
 
 The configuration YAML file should define all necessary file paths and sample names required by the pipeline.
 
@@ -235,12 +79,12 @@ The configuration YAML file should define all necessary file paths and sample na
 
 Please refer to the `config.yaml` file provided in the `config/` folder for detailed descriptions of each parameter.
 
-## 📝 samples_*.yaml
+## Sample Files
 
 The `samples_normal.yaml` and `samples_tumor.yaml` files contain a simple list of sample names corresponding to paired-end targeted sequencing raw data files.
 
 - **Content:** Only sample names, without file extensions or formats.
-- **Data location:** FASTQ files should be stored in the `fastq/` directory inside the `work_dir` specified in the config file.
+- **Data location:** FASTQ files should be stored in the `fastq/` directory inside the `work_dir` specified in the configuration file.
 - **File naming convention:** Each sample should have paired-end FASTQ files named as `{sample}_R1.fastq.gz` and `{sample}_R2.fastq.gz`.
 
 Example:
@@ -251,7 +95,7 @@ samples:
   - "Sample3"
 ```
 
-## 💡 Tip
+## Tip
 
 - Test the workflow with a dry run:
 
@@ -259,16 +103,16 @@ samples:
 snakemake -s AVANTseq.smk --dry-run
 ```
 
-## 📜 License
+## License
 
 This project is licensed under the MIT License. See the `LICENSE.txt` file for details.
 
 ---
 
-## 📬 Contact
+## Contact
 
 For issues, questions, or contributions, please contact:
 
 **Verena Passerini**  
 📧 info@verenapasserini.com 
-🔗 [github.com/VerenaPass/AVANTseq](https://github.com/VerenaPass/AVANTseq)
+🔗 [github.com/VerenaPasserini/AVANTseq](https://github.com/VerenaPasserini/AVANTseq)
