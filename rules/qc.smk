@@ -23,7 +23,7 @@ rule fastqc:
     log:
         join(config["work_dir"], "alignment/log/{sample}_fastqc.log")
     params:
-        out_dir=join(config["work_dir"],"alignment/qc")
+        out_dir=join(config["work_dir"],"alignment/qc/fastqc/")
     message:
         "Running FastQC on {input}"
     shell:
@@ -48,7 +48,7 @@ rule qc_stats:
 # Run multiqc on fastqc and samtools stats
 rule multiqc:
     input:
-        expand(join(config["work_dir"], "alignment/qc/{sample}_fastqc.html"), sample=config["samples"]),
+        expand(join(config["work_dir"], "alignment/qc/fastqc/{sample}_fastqc.html"), sample=config["samples"]),
         expand(join(config["work_dir"], "alignment/qc/{sample}_idxstats.txt"), sample=config["samples"]),
         expand(join(config["work_dir"], "alignment/qc/{sample}_stats.txt"), sample=config["samples"])
     output:
