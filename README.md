@@ -102,6 +102,8 @@ samples:
 ```bash
 snakemake -s AVANTseq.smk --dry-run
 ```
+- This workflow assumes input FASTQ files are gzip-compressed (`.fastq.gz`). If your input files are uncompressed (`.fastq`), please update the `trim.smk` rule accordingly by replacing the expected file extensions.  
+
 
 ## License
 
