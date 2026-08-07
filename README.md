@@ -25,7 +25,7 @@ AVANTseq/
 ├── rules/
 │   ├── trim.smk                # Trim raw fastq reads with atropos
 │   ├── align.smk               # Align trimmed reads using bwa mem
-│   ├── qc.smk.smk              # Check sequencing and alignemnt quality
+│   ├── qc.smk                  # Check sequencing and alignemnt quality
 │   ├── pon.smk                 # Generate a custom PoN and merge with an existing one
 │   ├── variants.smk            # Call and annotate somatic variants with mutect2 and funcotator
 ├── config/
