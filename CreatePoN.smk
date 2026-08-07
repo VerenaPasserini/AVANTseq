@@ -4,7 +4,7 @@
 # for somatic variant calling using GATK’s Mutect2.
 # --------------------------------------------------------------
 # Author: Verena Passerini
-# GitHub: https://github.com/VerenaPass/AVANTseq
+# GitHub: https://github.com/VerenaPasserini/AVANTseq
 # Last updated: May 2025
 # Snakemake version: 8.29.3
 # --------------------------------------------------------------
