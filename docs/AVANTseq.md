@@ -12,7 +12,7 @@ Performs somatic variant calling on tumor samples (optionally with matched norma
 Please refer to the sections below for detailed descriptions of:
 
 - The main configuration file `config/config.yaml`, including reference files, target regions, and optional panel of normals.
-- The sample list `config/samples_normal.yaml`, which should contain the list of normal samples.
+- The sample list `config/samples_tumor.yaml`, which should contain the list of tumor samples.
 
 ### Run the AVANTseq Pipeline
 
