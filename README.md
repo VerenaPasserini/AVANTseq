@@ -1,3 +1,5 @@
+![AVANTseq – Snakemake pipeline for somatic variant calling from targeted NGS data](docs/avantseq-banner.png)
+
 # AVANTseq: Automated Variant Analysis for Next-gen Targeted Sequencing in Cancer research
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23212970.svg)](https://doi.org/10.5281/zenodo.23212970) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg) ![Snakemake](https://img.shields.io/badge/snakemake-≥7-brightgreen.svg)
