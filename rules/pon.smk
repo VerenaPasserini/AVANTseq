@@ -8,6 +8,7 @@
 # - mutect2: Run Mutect2 on multiple normal samples in tumor only mode to generate raw variant calls.
 # - genomicsdb_import: Import Mutect2 VCFs into a GenomicsDB workspace for joint processing.
 # - create_pon: Generate a custom PoN VCF from the GenomicsDB workspace.
+# - sort_pon_vcf: Sort the custom PoN VCF.
 # - merge_pon_files: Merge the custom PoN with a public/reference PoN to produce the final PoN VCF used in variant calling.
 #
 # This workflow ensures improved specificity in somatic variant detection by leveraging both custom and public PoNs.
@@ -24,9 +25,9 @@ rule mutect2:
     output:
         join(config["work_dir"], "variants/mutect2/pon/{sample}.vcf.gz")
     log:
-        join(config["work_dir"], "variants/log/{sample}_mutect2.log")
+        join(config["work_dir"], "variants/log/pon/{sample}_mutect2.log")
     message:
-        "Running Mutect2 on {input.bam}"
+        "Running Mutect2 (tumor-only mode) on normal sample {input.bam}"
     shell:
         "gatk Mutect2 -R {input.ref} -I {input.bam} " 
         "--germline-resource {input.germline_resource} " 
@@ -44,7 +45,7 @@ rule genomicsdb_import:
         interval_list=config["targets"],
         vcf_args=lambda wildcards, input: " ".join(f"-V {vcf}" for vcf in input.vcfs)
     log:
-        join(config["work_dir"], "log/genomicsdb_import.log")
+        join(config["work_dir"], "variants/log/genomicsdb_import.log")
     message:
         "Running Genomics DB Import on mutect2 VCFs"
     shell:

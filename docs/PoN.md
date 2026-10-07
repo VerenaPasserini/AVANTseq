@@ -2,21 +2,22 @@
 
 ### Purpose
 
-Creates a high-quality PoN VCF file from multiple normal BAM files. This PoN helps filter out recurrent sequencing artifacts and germline variants during somatic variant calling. The following DAG plot visualizes the PoN Snakemake workflow structure, highlighting rule dependencies and execution order:
+Creates a high-quality PoN VCF file from multiple normal samples and merges it with a public PoN. This PoN helps filter out recurrent sequencing artifacts and germline variants during somatic variant calling. The following rule graph visualizes the PoN Snakemake workflow structure, highlighting rule dependencies and execution order:
 
-![DAG for Create PoN pipeline](dag_createpon.png "Workflow DAG for createPoN.smk")
+![CreatePoN Snakemake rule graph: trimming, BWA alignment, duplicate marking, QC, Mutect2 on normals, GenomicsDBImport, CreateSomaticPanelOfNormals and merging with a public PoN](dag_createpon.png "Rule graph for CreatePoN.smk")
 
 ### Configuration
 
 Please refer to the sections below for detailed descriptions of:
 
-- The main configuration file `config/config.yaml`, including reference files, target regions, and optional panel of normals.
+- The main configuration file `config/config.yaml`, including reference files, target regions, the public panel of normals (`pon`) and the output path of the merged PoN (`merged_pon`).
 - The sample list `config/samples_normal.yaml`, which should contain the list of normal samples.
 
 ### Run the PoN Pipeline
 
 ```bash
-snakemake -s CreatePoN.smk --cores 8 
+# run from the repository root
+snakemake -s CreatePoN.smk --cores 8
 ```
 
 ### PoN Outputs
@@ -33,8 +34,8 @@ The PoN pipeline generates the following output files, grouped by analysis step.
 - `alignment/bams/{sample}.bam.bai`  
   BAM index file for rapid access using **samtools index**.
 
-- `alignment/qc/{sample}_fastqc.html`  
-  Quality control report from **FastQC**, assessing read quality, GC bias, adapter contamination, etc.  
+- `alignment/qc/fastqc/{sample}_R1_fastqc.html`, `alignment/qc/fastqc/{sample}_R2_fastqc.html`  
+  Quality control reports from **FastQC** on the raw reads (R1 and R2), assessing read quality, GC bias, adapter contamination, etc.  
   [FastQC documentation](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
 
 - `alignment/qc/multiqc_report.html`  
@@ -46,17 +47,17 @@ The PoN pipeline generates the following output files, grouped by analysis step.
 #### Coverage and Hybrid Capture QC
 
 - `variants/qc/CoverageSummary.txt`  
-  Global coverage summary across target regions for all normal samples.
+  Read counts over the covered regions for all normal samples, calculated with **deepTools multiBamSummary**.
 
 - `variants/qc/HsMetrics/{sample}_metrics.txt`  
-  Hybrid selection metrics from **Picard CollectHsMetrics**, including bait coverage and on-target rates.  
+  Hybrid selection metrics from **GATK (Picard) CollectHsMetrics**, including bait coverage and on-target rates.  
   [Picard CollectHsMetrics](https://broadinstitute.github.io/picard/command-line-overview.html#CollectHsMetrics)
 
 ---
 
 #### Somatic Variant Calling (for PoN generation)
 
-- `variants/mutect2/{sample}.vcf.gz`  
+- `variants/mutect2/pon/{sample}.vcf.gz`  
   Per-sample variant calls from **Mutect2** in tumor-only mode, used for PoN construction.  
   [GATK Mutect2](https://gatk.broadinstitute.org/hc/en-us/articles/360037593851-Mutect2)
 
@@ -64,10 +65,13 @@ The PoN pipeline generates the following output files, grouped by analysis step.
 
 #### Panel of Normals Output
 
-- `variants/mutect2/custom_pon.vcf.gz`  
-  Raw panel of normals VCF file generated from all normal sample calls.
+- `variants/mutect2/pon/custom_pon.vcf.gz`  
+  Custom panel of normals VCF file generated from all normal sample calls with **CreateSomaticPanelOfNormals**.
 
-- `merged_pon.vcf.gz`  
-  Final merged panel of normals VCF file, used as an input for somatic variant calling in tumor samples.
+- `variants/mutect2/pon/pon_sorted.vcf.gz`  
+  Sorted custom panel of normals.
+
+- `merged_pon.vcf.gz` (path set by `merged_pon` in `config/config.yaml`)  
+  Final panel of normals (custom + public), used by `AVANTseq.smk` for somatic variant calling in tumor samples.
 
 ---

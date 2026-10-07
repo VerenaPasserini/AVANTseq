@@ -1,27 +1,23 @@
-
-# Snakemake Pipeline: Automated Variant Calling Analysis Workflow
+# Snakemake Pipeline: Automated Somatic Variant Calling Workflow
 # --------------------------------------------------------------
-# This Snakemake pipeline automates the process of variant calling 
-# and genome-wide copy number variation (CNV) analysis from NGS data 
-# generated using hybrid capture-based targeted sequencing.
+# This Snakemake pipeline automates somatic variant calling (SNVs and indels)
+# in tumor-only mode from NGS data generated using hybrid capture-based
+# targeted sequencing, using GATK Mutect2 with a custom Panel of Normals.
 # --------------------------------------------------------------
 # Author: Verena Passerini
 # GitHub: https://github.com/VerenaPasserini/AVANTseq
-# Last updated: March 2025
+# Last updated: October 2026
 # Snakemake version: 8.29.3
 # --------------------------------------------------------------
 
-# Define the config file with samples list and relevant paths
-
-configfile: "config.yaml"
-configfile: "samples.yaml"
+# Configuration files (paths are relative to the directory snakemake is run from,
+# i.e. the repository root). Override with --configfile if needed.
+configfile: "config/config.yaml"
+configfile: "config/samples_tumor.yaml"
 
 from os.path import join
-from pathlib import Path
-import subprocess
 
 # Include rules
-
 include: "rules/trim.smk"
 include: "rules/align.smk"
 include: "rules/qc.smk"
@@ -31,9 +27,9 @@ include: "rules/variants.smk"
 rule all:
     input:
         expand(join(config["work_dir"], "alignment/bams/{sample}.bam.bai"), sample=config["samples"]),
-        expand(join(config["work_dir"], "alignment/qc/fastqc/{sample}_fastqc.html"), sample=config["samples"]),
-        expand(join(config["work_dir"], "alignment/qc/multiqc_report.html"), sample=config["samples"]),
-        expand(join(config["work_dir"], "variants/qc/CoverageSummary.txt"), sample=config["samples"]),
+        expand(join(config["work_dir"], "alignment/qc/fastqc/{sample}_{read}_fastqc.html"), sample=config["samples"], read=["R1", "R2"]),
+        join(config["work_dir"], "alignment/qc/multiqc_report.html"),
+        join(config["work_dir"], "variants/qc/CoverageSummary.txt"),
         expand(join(config["work_dir"], "variants/qc/HsMetrics/{sample}_metrics.txt"), sample=config["samples"]),
         expand(join(config["work_dir"], "variants/mutect2/{sample}.vcf.gz"), sample=config["samples"]),
         expand(join(config["work_dir"], "variants/mutect2/{sample}.getpileupsummaries.table"), sample=config["samples"]),
@@ -42,4 +38,3 @@ rule all:
         expand(join(config["work_dir"], "variants/filtered/{sample}_filtered.vcf.gz"), sample=config["samples"]),
         expand(join(config["work_dir"], "variants/filtered/{sample}_filtered_norm_dec.vcf.gz"), sample=config["samples"]),
         expand(join(config["work_dir"], "variants/maf/{sample}.maf"), sample=config["samples"]),
-

@@ -1,33 +1,40 @@
 # ---------------------------------------------------------------------------------------
-# Quality Control Rules for Aligned BAM Files
+# Quality Control Rules for raw reads and aligned BAM files
 # ---------------------------------------------------------------------------------------
-# This module includes QC steps to evaluate the quality and coverage of aligned sequencing data.
-# 
+# This module includes QC steps to evaluate the quality and coverage of sequencing data.
+#
 # Rules included:
-# - fastqc: Runs FastQC on BAM files to assess sequencing quality.
+# - fastqc: Runs FastQC on the raw FASTQ files to assess sequencing quality.
 # - qc_stats: Generates summary statistics and alignment counts using samtools stats and idxstats.
 # - multiqc: Aggregates all QC reports (FastQC and samtools) into a single MultiQC report.
 # - multibamsummary: Computes coverage summary across captured regions using multiBamSummary (deepTools).
 # - collecthsmetrics: Uses GATK CollectHsMetrics to report hybrid selection metrics like coverage, on-target rate, and duplication.
 #
-# These steps ensure reliable input for downstream variant calling and allow detection of 
+# These steps ensure reliable input for downstream variant calling and allow detection of
 # technical issues such as poor capture efficiency or low coverage.
 # ---------------------------------------------------------------------------------------
 
-# Run fastqc on aligned reads
+import os
+
+# Run FastQC on raw paired-end reads
 rule fastqc:
     input:
-        join(config["work_dir"], "alignment/bams/{sample}.bam")
+        R1=join(config["work_dir"], "fastq/{sample}_R1.fastq.gz"),
+        R2=join(config["work_dir"], "fastq/{sample}_R2.fastq.gz")
     output:
-        join(config["work_dir"], "alignment/qc/fastqc/{sample}_fastqc.html")
+        html_R1=join(config["work_dir"], "alignment/qc/fastqc/{sample}_R1_fastqc.html"),
+        html_R2=join(config["work_dir"], "alignment/qc/fastqc/{sample}_R2_fastqc.html"),
+        zip_R1=join(config["work_dir"], "alignment/qc/fastqc/{sample}_R1_fastqc.zip"),
+        zip_R2=join(config["work_dir"], "alignment/qc/fastqc/{sample}_R2_fastqc.zip")
+    params:
+        out_dir=lambda wildcards, output: os.path.dirname(output.html_R1)
+    threads: 2
     log:
         join(config["work_dir"], "alignment/log/{sample}_fastqc.log")
-    params:
-        out_dir=join(config["work_dir"],"alignment/qc/fastqc/")
     message:
-        "Running FastQC on {input}"
+        "Running FastQC on {input.R1} and {input.R2}"
     shell:
-        "fastqc -t 16 -o {params.out_dir} {input} > {log} 2>&1"
+        "fastqc -t {threads} -o {params.out_dir} {input.R1} {input.R2} > {log} 2>&1"
 
 # Run samtools stats and idxstats
 rule qc_stats:
@@ -37,24 +44,26 @@ rule qc_stats:
     output:
         stats=join(config["work_dir"], "alignment/qc/{sample}_stats.txt"),
         idxstats=join(config["work_dir"], "alignment/qc/{sample}_idxstats.txt")
+    log:
+        join(config["work_dir"], "alignment/log/{sample}_qc_stats.log")
     message:
         "Running samtools stats and idxstats on {input.bam}"
     shell:
         """
-        samtools stats {input.bam} > {output.stats}
-        samtools idxstats {input.bam} > {output.idxstats}
+        samtools stats {input.bam} > {output.stats} 2> {log}
+        samtools idxstats {input.bam} > {output.idxstats} 2>> {log}
         """
 
-# Run multiqc on fastqc and samtools stats
+# Run MultiQC on FastQC and samtools stats
 rule multiqc:
     input:
-        expand(join(config["work_dir"], "alignment/qc/fastqc/{sample}_fastqc.html"), sample=config["samples"]),
+        expand(join(config["work_dir"], "alignment/qc/fastqc/{sample}_{read}_fastqc.zip"), sample=config["samples"], read=["R1", "R2"]),
         expand(join(config["work_dir"], "alignment/qc/{sample}_idxstats.txt"), sample=config["samples"]),
         expand(join(config["work_dir"], "alignment/qc/{sample}_stats.txt"), sample=config["samples"])
     output:
         join(config["work_dir"], "alignment/qc/multiqc_report.html")
     params:
-        dir=join(config["work_dir"], "alignment/qc")
+        dir=lambda wildcards, output: os.path.dirname(output[0])
     log:
         join(config["work_dir"], "alignment/log/multiqc.log")
     message:
@@ -62,24 +71,26 @@ rule multiqc:
     shell:
         "multiqc -f -o {params.dir} {params.dir} > {log} 2>&1"
 
-# Run multibam summary on captured regions
+# Run multiBamSummary on captured regions
 rule multibamsummary:
     input:
-        expand(join(config["work_dir"], "alignment/bams/{sample}.bam"), sample=config["samples"]),
-        expand(join(config["work_dir"], "alignment/bams/{sample}.bam.bai"), sample=config["samples"]),
+        bams=expand(join(config["work_dir"], "alignment/bams/{sample}.bam"), sample=config["samples"]),
+        bais=expand(join(config["work_dir"], "alignment/bams/{sample}.bam.bai"), sample=config["samples"]),
         bed=config["bed"]
     output:
-        join(config["work_dir"],"variants/qc/CoverageSummary.txt")
-    params:
-        bam_list=join(config["work_dir"],"alignment/bams/*.bam")
+        counts=join(config["work_dir"], "variants/qc/CoverageSummary.txt"),
+        npz=join(config["work_dir"], "variants/qc/CoverageSummary.npz")
+    threads: 4
     log:
-        join(config["work_dir"],"variants/log/multibamsummary.log")
+        join(config["work_dir"], "variants/log/multibamsummary.log")
     message:
-        "Running multiBamSummary on {params.bam_list}"
+        "Running multiBamSummary on {input.bams}"
     shell:
-        "multiBamSummary BED-file --BED {input.bed} " 
-        "--bamfiles {params.bam_list} " 
-        "--outRawCounts {output} " 
+        "multiBamSummary BED-file --BED {input.bed} "
+        "--bamfiles {input.bams} "
+        "--numberOfProcessors {threads} "
+        "--outFileName {output.npz} "
+        "--outRawCounts {output.counts} "
         "> {log} 2>&1"
 
 # Run CollectHsMetrics on captured regions
@@ -95,7 +106,7 @@ rule collecthsmetrics:
     message:
         "Running CollectHsMetrics on {input.bam}"
     shell:
-        "gatk CollectHsMetrics -I {input.bam} -O {output} " 
-        "-BAIT_INTERVALS {input.baits} -TARGET_INTERVALS {input.target} " 
-        "-VALIDATION_STRINGENCY SILENT " 
+        "gatk CollectHsMetrics -I {input.bam} -O {output} "
+        "-BAIT_INTERVALS {input.baits} -TARGET_INTERVALS {input.target} "
+        "-VALIDATION_STRINGENCY SILENT "
         "> {log} 2>&1"
