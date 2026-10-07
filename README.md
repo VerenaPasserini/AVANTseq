@@ -1,6 +1,6 @@
 # AVANTseq: Automated Variant Analysis for Next-gen Targeted Sequencing in Cancer research
 
-**AVANTseq** is a modular, Snakemake-based workflow for high-confidence somatic variant calling from paired end targeted NGS data. It includes:
+**AVANTseq** is a modular, Snakemake-based workflow for high-confidence somatic variant calling from paired-end targeted NGS data. It includes:
 
 - A pipeline for generating a custom **Panel of Normals (PoN)**
 - A downstream **variant calling pipeline** using GATK Mutect2 with the generated PoN
@@ -25,7 +25,7 @@ AVANTseq/
 ├── rules/
 │   ├── trim.smk                # Trim raw fastq reads with atropos
 │   ├── align.smk               # Align trimmed reads using bwa mem
-│   ├── qc.smk                  # Check sequencing and alignemnt quality
+│   ├── qc.smk                  # Check sequencing and alignment quality
 │   ├── pon.smk                 # Generate a custom PoN and merge with an existing one
 │   ├── variants.smk            # Call and annotate somatic variants with mutect2 and funcotator
 ├── config/
@@ -33,7 +33,7 @@ AVANTseq/
 │   ├── samples_normal.yaml     # Configuration file containing normal samples list
 │   ├── samples_tumor.yaml      # Configuration file containing tumor samples list
 ├── CreatePoN.smk               # Top-level Snakefile to create custom PoN from normal samples
-├── AVANTseq.smk                # Top-level Snakefile to call somatic variants form tumor samples using the PoN previously generated
+├── AVANTseq.smk                # Top-level Snakefile to call somatic variants from tumor samples using the PoN previously generated
 ├── LICENSE.txt                 # MIT license file
 └── README.md                   # This file
 ```
