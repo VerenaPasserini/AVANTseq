@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use AVANTseq in your research, please cite it as below."
+title: "AVANTseq: Automated Variant Analysis for Next-gen Targeted Sequencing in Cancer research"
+type: software
+authors:
+  - family-names: Passerini
+    given-names: Verena
+    orcid: "https://orcid.org/0000-0003-4094-1502"
+repository-code: "https://github.com/VerenaPasserini/AVANTseq"
+license: MIT
+keywords:
+  - bioinformatics
+  - snakemake
+  - somatic variant calling
+  - targeted sequencing
+  - cancer genomics
+  - GATK Mutect2
+  - panel of normals
