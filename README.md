@@ -1,5 +1,7 @@
 # AVANTseq: Automated Variant Analysis for Next-gen Targeted Sequencing in Cancer research
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23212970.svg)](https://doi.org/10.5281/zenodo.23212970) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg) ![Snakemake](https://img.shields.io/badge/snakemake-≥7-brightgreen.svg)
+
 **AVANTseq** is a modular, Snakemake-based workflow for high-confidence somatic variant calling from paired-end targeted NGS data. It includes:
 
 - A pipeline for generating a custom **Panel of Normals (PoN)**
@@ -103,6 +105,13 @@ samples:
 snakemake -s AVANTseq.smk --dry-run
 ```
 - This workflow assumes input FASTQ files are gzip-compressed (`.fastq.gz`). If your input files are uncompressed (`.fastq`), please update the `trim.smk` rule accordingly by replacing the expected file extensions.  
+
+
+## Citation
+
+If you use AVANTseq, please cite:
+
+Passerini, V. (2026). *AVANTseq: Automated Variant Analysis for Next-gen Targeted Sequencing in Cancer research* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.23212970
 
 
 ## License
