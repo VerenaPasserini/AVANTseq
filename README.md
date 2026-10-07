@@ -124,7 +124,7 @@ snakemake -s AVANTseq.smk --dry-run
 
 If you use AVANTseq, please cite:
 
-Passerini, V. (2026). *AVANTseq: Automated Variant Analysis for Next-gen Targeted Sequencing in Cancer research* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.23212970
+Passerini, V. (2026). *AVANTseq: Automated Variant Analysis for Next-gen Targeted Sequencing in Cancer research*. Zenodo. https://doi.org/10.5281/zenodo.23212970
 
 
 ## License
