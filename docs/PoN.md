@@ -29,7 +29,7 @@ The PoN pipeline generates the following output files, grouped by analysis step.
 #### Quality Control and Alignment
 
 - `alignment/bams/{sample}.bam`  
-  BAM file of aligned reads for each normal sample, generated using **BWA-MEM**, sorted and with duplicates marked.
+  Analysis-ready BAM file for each normal sample: trimmed with **fastp**, aligned with **BWA-MEM**, sorted, duplicate-marked and base-quality recalibrated (**GATK BQSR**), exactly as for the tumor samples.
 
 - `alignment/bams/{sample}.bam.bai`  
   BAM index file for rapid access using **samtools index**.
@@ -38,8 +38,19 @@ The PoN pipeline generates the following output files, grouped by analysis step.
   Quality control reports from **FastQC** on the raw reads (R1 and R2), assessing read quality, GC bias, adapter contamination, etc.  
   [FastQC documentation](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
 
+- `alignment/qc/fastp/{sample}_fastp.html`, `alignment/qc/fastp/{sample}_fastp.json`  
+  Read trimming reports from **fastp** (adapter content, quality and length filtering, insert size).  
+  [fastp documentation](https://github.com/OpenGene/fastp)
+
+- `alignment/qc/markdup/{sample}_dedup_metrics.txt`  
+  Duplication metrics from **GATK MarkDuplicates**.
+
+- `alignment/qc/bqsr/{sample}_recal.table`  
+  Base quality recalibration model from **GATK BaseRecalibrator**, applied with **ApplyBQSR**.  
+  [GATK BQSR](https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR)
+
 - `alignment/qc/multiqc_report.html`  
-  Summary report from **MultiQC**, aggregating FastQC results across all normal samples.  
+  Summary report from **MultiQC**, aggregating FastQC, fastp, samtools, MarkDuplicates and BQSR metrics across all normal samples.  
   [MultiQC documentation](https://multiqc.info/)
 
 ---
@@ -66,7 +77,7 @@ The PoN pipeline generates the following output files, grouped by analysis step.
 #### Panel of Normals Output
 
 - `variants/mutect2/pon/custom_pon.vcf.gz`  
-  Custom panel of normals VCF file generated from all normal sample calls with **CreateSomaticPanelOfNormals**.
+  Custom panel of normals VCF file generated from all normal sample calls (combined with **GenomicsDBImport**) with **CreateSomaticPanelOfNormals**, using the gnomAD germline resource to exclude common germline sites.
 
 - `variants/mutect2/pon/pon_sorted.vcf.gz`  
   Sorted custom panel of normals.
@@ -75,3 +86,8 @@ The PoN pipeline generates the following output files, grouped by analysis step.
   Final panel of normals (custom + public), used by `AVANTseq.smk` for somatic variant calling in tumor samples.
 
 ---
+
+### Why merge the custom and public PoN?
+
+Merging Panels of Normals is not part of the GATK best practices. AVANTseq does it so that two kinds of recurrent sites are flagged during variant calling: technical artefacts specific to your assay and laboratory (custom PoN) and sites that recur across many public normal samples (public PoN). Mutect2 uses the PoN to flag calls (`panel_of_normals` filter), not to remove reads, so the merged PoN only adds sites to that filter.
+

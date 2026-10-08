@@ -11,6 +11,17 @@ ref_bwa: "/your_path/genomes/Hsapiens/hg38/bwa/hg38.fa"   # FASTA file used for 
 ref_fa: "/your_path/genomes/Hsapiens/hg38/seq/hg38.fa"  # Reference genome FASTA file used for variant calling and other tools.
 ref_version: "hg38"  # Reference genome build used by Funcotator (hg38 or hg19).
 
+# Known variant sites for base quality score recalibration (BQSR), e.g. from the GATK resource bundle:
+known_sites:
+  - "/your_path/Homo_sapiens_assembly38.dbsnp138.vcf.gz"  # dbSNP
+  - "/your_path/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"  # Mills & 1000G gold standard indels
+  - "/your_path/Homo_sapiens_assembly38.known_indels.vcf.gz"  # Known indels
+
+# Read trimming with fastp (adapters are detected automatically for paired-end reads):
+fastp_cut_tail_quality: 20  # Trim 3' ends while the mean quality in a sliding window is below this value
+fastp_min_length: 25        # Discard reads shorter than this after trimming
+fastp_extra: ""             # Any additional fastp options, e.g. "--adapter_sequence ... --adapter_sequence_r2 ..."
+
 # Coverage-related files for metrics and target regions:
 bed: "/your_path/Covered_hg38.bed"  # BED file defining regions covered by sequencing.
 baits: "/your_path/Baits_hg38.interval_list"  # Interval list of baited regions used in capture (used by GATK and Picard).

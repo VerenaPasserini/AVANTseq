@@ -6,7 +6,7 @@
 # Rules included:
 # - fastqc: Runs FastQC on the raw FASTQ files to assess sequencing quality.
 # - qc_stats: Generates summary statistics and alignment counts using samtools stats and idxstats.
-# - multiqc: Aggregates all QC reports (FastQC and samtools) into a single MultiQC report.
+# - multiqc: Aggregates QC reports (FastQC, fastp, samtools, MarkDuplicates, BQSR) into a single MultiQC report.
 # - multibamsummary: Computes coverage summary across captured regions using multiBamSummary (deepTools).
 # - collecthsmetrics: Uses GATK CollectHsMetrics to report hybrid selection metrics like coverage, on-target rate, and duplication.
 #
@@ -54,12 +54,15 @@ rule qc_stats:
         samtools idxstats {input.bam} > {output.idxstats} 2>> {log}
         """
 
-# Run MultiQC on FastQC and samtools stats
+# Run MultiQC on all QC reports in alignment/qc
 rule multiqc:
     input:
         expand(join(config["work_dir"], "alignment/qc/fastqc/{sample}_{read}_fastqc.zip"), sample=config["samples"], read=["R1", "R2"]),
         expand(join(config["work_dir"], "alignment/qc/{sample}_idxstats.txt"), sample=config["samples"]),
-        expand(join(config["work_dir"], "alignment/qc/{sample}_stats.txt"), sample=config["samples"])
+        expand(join(config["work_dir"], "alignment/qc/{sample}_stats.txt"), sample=config["samples"]),
+        expand(join(config["work_dir"], "alignment/qc/fastp/{sample}_fastp.json"), sample=config["samples"]),
+        expand(join(config["work_dir"], "alignment/qc/markdup/{sample}_dedup_metrics.txt"), sample=config["samples"]),
+        expand(join(config["work_dir"], "alignment/qc/bqsr/{sample}_recal.table"), sample=config["samples"])
     output:
         join(config["work_dir"], "alignment/qc/multiqc_report.html")
     params:

@@ -6,7 +6,7 @@
 # --------------------------------------------------------------
 # Author: Verena Passerini
 # GitHub: https://github.com/VerenaPasserini/AVANTseq
-# Last updated: October 2026
+# Last updated: October 2026 (v1.1.0)
 # Snakemake version: 8.29.3
 # --------------------------------------------------------------
 
@@ -16,6 +16,12 @@ configfile: "config/config.yaml"
 configfile: "config/samples_tumor.yaml"
 
 from os.path import join
+import re
+
+# Restrict the {sample} wildcard to the sample names listed in the sample file,
+# so that e.g. "{sample}.bam" cannot match "tumor1.dedup.bam"
+wildcard_constraints:
+    sample="|".join(re.escape(s) for s in config["samples"])
 
 # Include rules
 include: "rules/trim.smk"

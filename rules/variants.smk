@@ -5,10 +5,12 @@
 # using GATK's Mutect2 workflow, vt for normalization, and Funcotator for annotation.
 #
 # Rules included:
-# - mutect2: Runs GATK Mutect2 on each sample to call potential somatic variants.
+# - mutect2: Runs GATK Mutect2 on each sample to call potential somatic variants
+#   (also collects F1R2 counts for the read orientation model).
+# - learn_read_orientation_model: Learns orientation bias priors (e.g. FFPE / oxoG artefacts).
 # - getpileupsummaries: Gathers pileup summary statistics used for contamination estimation.
 # - calculatecontamination: Estimates contamination based on pileup summaries.
-# - filtermutectcalls: Applies Mutect2-specific filters using contamination estimates.
+# - filtermutectcalls: Applies Mutect2-specific filters using contamination estimates and orientation bias priors.
 # - vt_normalize_decompose: Normalizes and decomposes filtered VCFs for annotation.
 # - funcotator: Annotates the final filtered variants in MAF format using Funcotator.
 #
@@ -26,7 +28,8 @@ rule mutect2:
         germline_resource=config["germline_resource"],
         targets=config["targets"]
     output:
-        join(config["work_dir"], "variants/mutect2/{sample}.vcf.gz")
+        vcf=join(config["work_dir"], "variants/mutect2/{sample}.vcf.gz"),
+        f1r2=join(config["work_dir"], "variants/mutect2/{sample}.f1r2.tar.gz")
     log:
         join(config["work_dir"], "variants/log/{sample}_mutect2.log")
     message:
@@ -34,16 +37,33 @@ rule mutect2:
     shell:
         "gatk Mutect2 -R {input.ref} -I {input.bam} " 
         "-pon {input.pon} --germline-resource {input.germline_resource} " 
-        "--intervals {input.targets} --genotype-germline-sites true " 
-        "--genotype-pon-sites true --interval-padding 50 " 
-        "-O {output} > {log} 2>&1"
+        "--intervals {input.targets} --interval-padding 50 "
+        # Also emit (and genotype) germline and PoN sites; they are flagged by
+        # FilterMutectCalls and removed before annotation (see docs/AVANTseq.md)
+        "--genotype-germline-sites true --genotype-pon-sites true "
+        "--f1r2-tar-gz {output.f1r2} "
+        "-O {output.vcf} > {log} 2>&1"
+
+# Learn read orientation bias priors from F1R2 counts
+rule learn_read_orientation_model:
+    input:
+        join(config["work_dir"], "variants/mutect2/{sample}.f1r2.tar.gz")
+    output:
+        join(config["work_dir"], "variants/mutect2/{sample}.read-orientation-model.tar.gz")
+    log:
+        join(config["work_dir"], "variants/log/{sample}_learnreadorientationmodel.log")
+    message:
+        "Running LearnReadOrientationModel on {input}"
+    shell:
+        "gatk LearnReadOrientationModel -I {input} -O {output} > {log} 2>&1"
     
 # Run GetPileupSummaries on aligned reads
 rule getpileupsummaries:
     input:
         bam=join(config["work_dir"], "alignment/bams/{sample}.bam"),
         bai=join(config["work_dir"], "alignment/bams/{sample}.bam.bai"),
-        vcf=config["vcf_exac"]
+        vcf=config["vcf_exac"],
+        targets=config["targets"]
     output:
         join(config["work_dir"], "variants/mutect2/{sample}.getpileupsummaries.table")
     log:
@@ -52,7 +72,9 @@ rule getpileupsummaries:
         "Running GetPileupSummaries on {input.bam}"
     shell:
         "gatk GetPileupSummaries -I {input.bam} " 
-        "-V {input.vcf} -L {input.vcf} " 
+        "-V {input.vcf} -L {input.vcf} "
+        # restrict common sites to the captured regions
+        "-L {input.targets} --interval-set-rule INTERSECTION " 
         "-O {output} > {log} 2>&1"
     
 # Run CalculateContamination on GetPileupSummaries
@@ -77,7 +99,8 @@ rule filtermutectcalls:
         ref=config["ref_fa"],
         vcf=join(config["work_dir"], "variants/mutect2/{sample}.vcf.gz"),
         contamination_table=join(config["work_dir"], "variants/mutect2/{sample}.calculatecontamination.table"),
-        segments=join(config["work_dir"], "variants/mutect2/{sample}.segments.table")
+        segments=join(config["work_dir"], "variants/mutect2/{sample}.segments.table"),
+        ob_priors=join(config["work_dir"], "variants/mutect2/{sample}.read-orientation-model.tar.gz")
     output:
         join(config["work_dir"], "variants/filtered/{sample}_filtered.vcf.gz")
     log:
@@ -87,7 +110,8 @@ rule filtermutectcalls:
     shell:
         "gatk FilterMutectCalls -R {input.ref} -V {input.vcf} " 
         "--contamination-table {input.contamination_table} " 
-        "--tumor-segmentation {input.segments} " 
+        "--tumor-segmentation {input.segments} "
+        "--ob-priors {input.ob_priors} " 
         "-O {output} > {log} 2>&1"
     
 
@@ -99,15 +123,17 @@ rule vt_normalize_decompose:
     output:
         vcf=join(config["work_dir"], "variants/filtered/{sample}_filtered_norm_dec.vcf.gz"),
         tbi=join(config["work_dir"], "variants/filtered/{sample}_filtered_norm_dec.vcf.gz.tbi"),
-        tmp=temp(join(config["work_dir"], "variants/filtered/{sample}_temp.normalized.vcf"))
+        tmp=temp(join(config["work_dir"], "variants/filtered/{sample}_temp.decomposed.vcf"))
     log:
         join(config["work_dir"], "variants/log/{sample}_vt_normalize_decompose.log")
     message:
         "Normalizing and decomposing {input.vcf}"
     shell:
         """
-        vt normalize {input.vcf} -r {input.ref} -o {output.tmp} > {log} 2>&1
-        vt decompose {output.tmp} -o {output.vcf} >> {log} 2>&1
+        # 1) split multi-allelic records (-s: also split INFO/FORMAT fields such as AD and AF)
+        vt decompose -s {input.vcf} -o {output.tmp} > {log} 2>&1
+        # 2) left-align and trim alleles
+        vt normalize {output.tmp} -r {input.ref} -o {output.vcf} >> {log} 2>&1
         tabix -f -p vcf {output.vcf} >> {log} 2>&1
         """
 

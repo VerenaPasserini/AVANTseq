@@ -10,6 +10,9 @@
 # - create_pon: Generate a custom PoN VCF from the GenomicsDB workspace.
 # - sort_pon_vcf: Sort the custom PoN VCF.
 # - merge_pon_files: Merge the custom PoN with a public/reference PoN to produce the final PoN VCF used in variant calling.
+#   Note: merging PoNs is not part of the GATK best practices. It is done here so that recurrent
+#   artefacts specific to this assay (custom PoN) and recurrent sites seen across many public
+#   normals (public PoN) are both filtered. Mutect2 uses the PoN sites to flag (not remove) calls.
 #
 # This workflow ensures improved specificity in somatic variant detection by leveraging both custom and public PoNs.
 # ----------------------------------------------------------------------------------------
@@ -38,11 +41,11 @@ rule mutect2:
 rule genomicsdb_import:
     input:
         vcfs=expand(join(config["work_dir"], "variants/mutect2/pon/{sample}.vcf.gz"), sample=config["samples"]),
-        ref=config["ref_fa"]
+        ref=config["ref_fa"],
+        targets=config["targets"]
     output:
         directory(join(config["work_dir"], "variants/mutect2/pon/pon_db"))
     params:
-        interval_list=config["targets"],
         vcf_args=lambda wildcards, input: " ".join(f"-V {vcf}" for vcf in input.vcfs)
     log:
         join(config["work_dir"], "variants/log/genomicsdb_import.log")
@@ -50,7 +53,8 @@ rule genomicsdb_import:
         "Running Genomics DB Import on mutect2 VCFs"
     shell:
         "gatk GenomicsDBImport -R {input.ref} "
-        "-L {params.interval_list} "
+        "-L {input.targets} --interval-padding 50 "
+        "--merge-input-intervals true "
         "{params.vcf_args} "
         "--genomicsdb-workspace-path {output} "
         " &> {log}"
@@ -59,7 +63,8 @@ rule genomicsdb_import:
 rule create_pon:
     input:
         db=join(config["work_dir"], "variants/mutect2/pon/pon_db"),
-        ref=config["ref_fa"]
+        ref=config["ref_fa"],
+        germline_resource=config["germline_resource"]
     output:
         join(config["work_dir"], "variants/mutect2/pon/custom_pon.vcf.gz")
     log:
@@ -68,7 +73,8 @@ rule create_pon:
         "Running create panel of normal"
     shell:
         "gatk CreateSomaticPanelOfNormals " 
-        "-R {input.ref} " 
+        "-R {input.ref} "
+        "--germline-resource {input.germline_resource} "
         "-V gendb://{input.db} " 
         "-O {output} > {log} 2>&1"
 

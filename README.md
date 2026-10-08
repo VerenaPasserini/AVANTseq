@@ -4,14 +4,14 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23212970.svg)](https://doi.org/10.5281/zenodo.23212970) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg) ![Snakemake](https://img.shields.io/badge/snakemake-≥8-brightgreen.svg)
 
-**AVANTseq** is a modular, Snakemake-based workflow for high-confidence somatic variant calling from paired-end targeted NGS data. It includes:
+**AVANTseq** is a modular, Snakemake-based workflow for high-confidence somatic variant calling from paired-end targeted NGS data, following the GATK best practices for somatic short variant discovery (tumor-only mode). It includes:
 
 - A pipeline for generating a custom **Panel of Normals (PoN)**
 - A downstream **variant calling pipeline** using GATK Mutect2 with the generated PoN
 
 ## Workflow overview
 
-![AVANTseq workflow: the CreatePoN pipeline builds a merged custom + public Panel of Normals from normal samples; the AVANTseq pipeline trims (Atropos), aligns (BWA-MEM), marks duplicates, calls somatic variants with Mutect2 using the merged PoN, estimates contamination and filters, normalizes (vt) and annotates (Funcotator) to MAF, with FastQC, samtools, MultiQC, CollectHsMetrics and multiBamSummary QC](docs/avantseq-workflow.png)
+![AVANTseq workflow: the CreatePoN pipeline builds a merged custom + public Panel of Normals from normal samples; the AVANTseq pipeline trims reads (fastp), aligns (BWA-MEM), marks duplicates and recalibrates base qualities (GATK BQSR), calls somatic variants with Mutect2 using the merged PoN, filters using contamination and read orientation bias models, normalizes (vt) and annotates (Funcotator) to MAF, with FastQC, fastp, samtools, MultiQC, CollectHsMetrics and multiBamSummary QC](docs/avantseq-workflow.png)
 
 <details>
 <summary>Show the full Snakemake rule graphs</summary>
@@ -43,11 +43,11 @@ Both workflows are modular, configurable via YAML, and built for reproducibility
 ```plaintext
 AVANTseq/
 ├── rules/
-│   ├── trim.smk                # Trim raw fastq reads with atropos
-│   ├── align.smk               # Align trimmed reads using bwa mem
+│   ├── trim.smk                # Trim adapters and low-quality bases with fastp
+│   ├── align.smk               # Align with bwa mem, mark duplicates and recalibrate base qualities (BQSR)
 │   ├── qc.smk                  # Check sequencing and alignment quality
 │   ├── pon.smk                 # Generate a custom PoN and merge with an existing one
-│   ├── variants.smk            # Call and annotate somatic variants with mutect2 and funcotator
+│   ├── variants.smk            # Call, filter and annotate somatic variants (Mutect2, orientation bias, Funcotator)
 ├── config/
 │   ├── config.yaml             # Configuration file containing the paths for required files (shared by both pipelines)
 │   ├── samples_normal.yaml     # Normal samples list (used by CreatePoN.smk)
@@ -64,11 +64,11 @@ AVANTseq/
 
 To run this pipeline, the following tools must be installed and available in your `PATH`:
 
-- [Atropos](https://atropos.readthedocs.io/) – adapter trimming and filtering  
 - [BWA](http://bio-bwa.sourceforge.net/) – read alignment  
 - [deepTools](https://deeptools.readthedocs.io/) – coverage summary (multiBamSummary)  
 - [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) – quality control of FASTQ files  
-- [GATK 4.x](https://gatk.broadinstitute.org/) – variant calling (Mutect2, etc.)  
+- [fastp](https://github.com/OpenGene/fastp) – adapter and quality trimming  
+- [GATK 4.x](https://gatk.broadinstitute.org/) – duplicate marking, BQSR, variant calling and filtering (Mutect2, etc.)  
 - [MultiQC](https://multiqc.info/) – summary reports of QC metrics  
 - [Snakemake](https://snakemake.readthedocs.io/) ≥ 8 – workflow management  
 - [samtools](http://www.htslib.org/) – BAM file processing  
@@ -92,6 +92,8 @@ The configuration YAML file should define all necessary file paths and sample na
 - `ref_bwa`: Reference genome BWA index file (for alignment)
 - `ref_fa`: Reference genome FASTA file (for variant calling)
 - `ref_version`: Genome build used by Funcotator (`hg38` or `hg19`)
+- `known_sites`: List of known variant VCFs for BQSR (e.g. dbSNP, Mills & 1000G indels from the GATK resource bundle)
+- `fastp_cut_tail_quality`, `fastp_min_length`, `fastp_extra`: Trimming settings for fastp (adapters are detected automatically)
 - `bed`: BED file for coverage metrics
 - `baits`: Interval list for baited regions
 - `targets`: Interval list for target regions
@@ -127,8 +129,14 @@ samples:
 snakemake -s CreatePoN.smk --dry-run
 snakemake -s AVANTseq.smk --dry-run
 ```
-- This workflow assumes input FASTQ files are gzip-compressed (`.fastq.gz`). If your input files are uncompressed (`.fastq`), please update the `trim.smk` and `qc.smk` (FastQC) rules accordingly by replacing the expected file extensions.  
+- This workflow assumes input FASTQ files are gzip-compressed (`.fastq.gz`). If your input files are uncompressed (`.fastq`), please update the `trim.smk` (fastp) and `qc.smk` (FastQC) rules accordingly by replacing the expected file extensions.  
 
+
+## Notes and limitations
+
+- AVANTseq calls variants in **tumor-only mode**: rare germline variants absent from gnomAD and from the Panel of Normals can remain in the output.
+- Merging the custom and public Panels of Normals is a design choice of AVANTseq, not a GATK best-practice step (see [docs/PoN.md](docs/PoN.md)).
+- More details in [docs/AVANTseq.md](docs/AVANTseq.md#notes-and-limitations).
 
 ## Citation
 
