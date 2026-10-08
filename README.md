@@ -11,7 +11,17 @@
 
 ## Workflow overview
 
-![AVANTseq Snakemake rule graph: trimming, BWA alignment, duplicate marking, QC, Mutect2 calling, contamination estimation, filtering, normalization and Funcotator annotation](docs/dag_avantseq.png)
+![AVANTseq workflow: the CreatePoN pipeline builds a merged custom + public Panel of Normals from normal samples; the AVANTseq pipeline trims (Atropos), aligns (BWA-MEM), marks duplicates, calls somatic variants with Mutect2 using the merged PoN, estimates contamination and filters, normalizes (vt) and annotates (Funcotator) to MAF, with FastQC, samtools, MultiQC, CollectHsMetrics and multiBamSummary QC](docs/avantseq-workflow.png)
+
+<details>
+<summary>Show the full Snakemake rule graphs</summary>
+
+**AVANTseq.smk**  
+![AVANTseq Snakemake rule graph](docs/dag_avantseq.png)
+
+**CreatePoN.smk**  
+![CreatePoN Snakemake rule graph](docs/dag_createpon.png)
+</details>
 
 ---
 
