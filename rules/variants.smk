@@ -62,8 +62,7 @@ rule getpileupsummaries:
     input:
         bam=join(config["work_dir"], "alignment/bams/{sample}.bam"),
         bai=join(config["work_dir"], "alignment/bams/{sample}.bam.bai"),
-        vcf=config["vcf_exac"],
-        targets=config["targets"]
+        vcf=config["vcf_exac"]
     output:
         join(config["work_dir"], "variants/mutect2/{sample}.getpileupsummaries.table")
     log:
@@ -72,9 +71,9 @@ rule getpileupsummaries:
         "Running GetPileupSummaries on {input.bam}"
     shell:
         "gatk GetPileupSummaries -I {input.bam} " 
-        "-V {input.vcf} -L {input.vcf} "
-        # restrict common sites to the captured regions
-        "-L {input.targets} --interval-set-rule INTERSECTION " 
+        # use all common sites (on- and off-target): more sites give a finer tumor
+        # segmentation, which FilterMutectCalls uses for the germline filter
+        "-V {input.vcf} -L {input.vcf} " 
         "-O {output} > {log} 2>&1"
     
 # Run CalculateContamination on GetPileupSummaries

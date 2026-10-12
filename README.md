@@ -47,14 +47,18 @@ AVANTseq/
 │   ├── align.smk               # Align with bwa mem, mark duplicates and recalibrate base qualities (BQSR)
 │   ├── qc.smk                  # Check sequencing and alignment quality
 │   ├── pon.smk                 # Generate a custom PoN and merge with an existing one
+│   ├── report.smk              # Merge filtered MAFs, maftools summary and oncoplot
 │   ├── variants.smk            # Call, filter and annotate somatic variants (Mutect2, orientation bias, Funcotator)
 ├── config/
 │   ├── config.yaml             # Configuration file containing the paths for required files (shared by both pipelines)
 │   ├── samples_normal.yaml     # Normal samples list (used by CreatePoN.smk)
 │   ├── samples_tumor.yaml      # Tumor samples list (used by AVANTseq.smk)
+├── scripts/maf_report.R        # R script used by the report rule
 ├── docs/                       # Detailed documentation and rule graphs for each pipeline
 ├── CreatePoN.smk               # Top-level Snakefile to create custom PoN from normal samples
 ├── AVANTseq.smk                # Top-level Snakefile to call somatic variants from tumor samples using the PoN previously generated
+├── envs/avantseq.yaml          # Conda environment with all required tools
+├── install_env.sh              # Creates the conda environment
 ├── CITATION.cff                # Citation metadata
 ├── LICENSE.txt                 # MIT license file
 └── README.md                   # This file
@@ -62,7 +66,14 @@ AVANTseq/
 
 ## 🔧 Requirements
 
-To run this pipeline, the following tools must be installed and available in your `PATH`:
+The easiest way to install everything (including Snakemake) is the provided conda environment:
+
+```bash
+bash install_env.sh          # creates the "avantseq" environment from envs/avantseq.yaml
+conda activate avantseq
+```
+
+Alternatively, the following tools must be installed and available in your `PATH`:
 
 - [BWA](http://bio-bwa.sourceforge.net/) – read alignment  
 - [deepTools](https://deeptools.readthedocs.io/) – coverage summary (multiBamSummary)  
@@ -74,6 +85,7 @@ To run this pipeline, the following tools must be installed and available in you
 - [samtools](http://www.htslib.org/) – BAM file processing  
 - [tabix / htslib](http://www.htslib.org/) – VCF indexing  
 - [vt](https://genome.sph.umich.edu/wiki/Vt) – VCF normalization
+- [R](https://www.r-project.org/) with [maftools](https://bioconductor.org/packages/maftools/) – final report (summary plot and oncoplot)
 
 ---
 
@@ -102,6 +114,7 @@ The configuration YAML file should define all necessary file paths and sample na
 - `germline_resource`: Germline allele frequency resource VCF
 - `vcf_exac`: ExAC common variants VCF file (for contamination estimation)
 - `data_source`: Funcotator data source directory (for annotation)
+- `report_min_depth`, `report_min_alt`, `report_min_vaf`, `report_max_pop_af`: Filters for the final report (minimum depth, minimum alt reads, minimum VAF, maximum gnomAD population allele frequency); only variants inside the `bed` covered regions are reported
 
 Both pipelines read `config/config.yaml`; `CreatePoN.smk` reads the sample list from `config/samples_normal.yaml` and `AVANTseq.smk` from `config/samples_tumor.yaml`. Run Snakemake from the repository root (or point to your own files with `--configfile`). Please refer to the `config.yaml` file provided in the `config/` folder for detailed descriptions of each parameter.
 

@@ -1,0 +1,22 @@
+# Conda environment with all tools needed to run AVANTseq (CreatePoN.smk and AVANTseq.smk)
+# Create it with:  bash install_env.sh   (or: conda env create -f envs/avantseq.yaml)
+name: avantseq
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python>=3.11
+  - snakemake>=8,<9   # workflow manager
+  - fastp>=0.23       # adapter and quality trimming
+  - bwa               # alignment
+  - samtools          # BAM sorting, indexing, stats
+  - htslib            # tabix / bgzip
+  - bcftools          # VCF handling (used e.g. to compare runs)
+  - gatk4>=4.4        # MarkDuplicates, BQSR, Mutect2, filtering, Funcotator
+  - vt                # VCF decomposition and normalization
+  - fastqc            # raw read QC
+  - multiqc           # QC report
+  - deeptools>=3.5    # multiBamSummary (coverage)
+  - r-base                 # R, for the final report
+  - bioconductor-maftools  # MAF summary and oncoplot
+  - graphviz          # optional: draw rule graphs (snakemake --rulegraph | dot -Tpng)

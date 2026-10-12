@@ -28,6 +28,7 @@ include: "rules/trim.smk"
 include: "rules/align.smk"
 include: "rules/qc.smk"
 include: "rules/variants.smk"
+include: "rules/report.smk"
 
 # Pipeline output files
 rule all:
@@ -44,3 +45,5 @@ rule all:
         expand(join(config["work_dir"], "variants/filtered/{sample}_filtered.vcf.gz"), sample=config["samples"]),
         expand(join(config["work_dir"], "variants/filtered/{sample}_filtered_norm_dec.vcf.gz"), sample=config["samples"]),
         expand(join(config["work_dir"], "variants/maf/{sample}.maf"), sample=config["samples"]),
+        join(config["work_dir"], "report/maf_summary.pdf"),
+        join(config["work_dir"], "report/oncoplot.pdf"),
