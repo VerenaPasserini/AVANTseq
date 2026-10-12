@@ -19,4 +19,7 @@ dependencies:
   - deeptools>=3.5    # multiBamSummary (coverage)
   - r-base                 # R, for the final report
   - bioconductor-maftools  # MAF summary and oncoplot
+  - r-data.table
+  - r-ggplot2              # coverage QC plot
+  - r-ggrepel
   - graphviz          # optional: draw rule graphs (snakemake --rulegraph | dot -Tpng)

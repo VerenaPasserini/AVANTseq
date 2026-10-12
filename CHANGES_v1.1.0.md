@@ -4,6 +4,7 @@
 - **Base quality score recalibration (BQSR)** in both pipelines: GATK BaseRecalibrator (restricted to the target regions + 50 bp) and ApplyBQSR. Requires the new `known_sites` list in `config/config.yaml` (e.g. dbSNP, Mills & 1000G indels).
 - **Read orientation bias filtering**: Mutect2 now collects F1R2 counts, LearnReadOrientationModel learns orientation bias priors and FilterMutectCalls uses them (`--ob-priors`). Removes artefacts such as FFPE deamination and oxoG damage.
 - **fastp replaces Atropos** for trimming: automatic paired-end adapter detection, 3' quality trimming and length filtering. Settings are configurable in `config/config.yaml` (`fastp_cut_tail_quality`, `fastp_min_length`, `fastp_extra`). fastp reports are included in MultiQC.
+- **Coverage QC report**: CollectHsMetrics of all samples in one table and plot, with a PASS / FLAG / FAIL class per sample (% target bases > 30x; thresholds configurable). FAIL samples are left out of the variant report.
 - **Final report**: the per-sample MAFs are filtered (covered regions from the BED file, depth, alt reads, VAF, gnomAD population frequency), merged and summarised with maftools (summary plot and oncoplot in `report/`). Filters are configurable in `config/config.yaml`.
 - **Conda environment** with all required tools, including Snakemake: `bash install_env.sh` (see `envs/avantseq.yaml`).
 

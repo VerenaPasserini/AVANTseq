@@ -47,13 +47,13 @@ AVANTseq/
 │   ├── align.smk               # Align with bwa mem, mark duplicates and recalibrate base qualities (BQSR)
 │   ├── qc.smk                  # Check sequencing and alignment quality
 │   ├── pon.smk                 # Generate a custom PoN and merge with an existing one
-│   ├── report.smk              # Merge filtered MAFs, maftools summary and oncoplot
+│   ├── report.smk              # Coverage QC report; merge filtered MAFs, maftools summary and oncoplot
 │   ├── variants.smk            # Call, filter and annotate somatic variants (Mutect2, orientation bias, Funcotator)
 ├── config/
 │   ├── config.yaml             # Configuration file containing the paths for required files (shared by both pipelines)
 │   ├── samples_normal.yaml     # Normal samples list (used by CreatePoN.smk)
 │   ├── samples_tumor.yaml      # Tumor samples list (used by AVANTseq.smk)
-├── scripts/maf_report.R        # R script used by the report rule
+├── scripts/                    # R scripts for the QC and variant reports
 ├── docs/                       # Detailed documentation and rule graphs for each pipeline
 ├── CreatePoN.smk               # Top-level Snakefile to create custom PoN from normal samples
 ├── AVANTseq.smk                # Top-level Snakefile to call somatic variants from tumor samples using the PoN previously generated
@@ -85,7 +85,7 @@ Alternatively, the following tools must be installed and available in your `PATH
 - [samtools](http://www.htslib.org/) – BAM file processing  
 - [tabix / htslib](http://www.htslib.org/) – VCF indexing  
 - [vt](https://genome.sph.umich.edu/wiki/Vt) – VCF normalization
-- [R](https://www.r-project.org/) with [maftools](https://bioconductor.org/packages/maftools/) – final report (summary plot and oncoplot)
+- [R](https://www.r-project.org/) with [maftools](https://bioconductor.org/packages/maftools/), data.table, ggplot2 and ggrepel – QC and variant reports
 
 ---
 
@@ -114,6 +114,8 @@ The configuration YAML file should define all necessary file paths and sample na
 - `germline_resource`: Germline allele frequency resource VCF
 - `vcf_exac`: ExAC common variants VCF file (for contamination estimation)
 - `data_source`: Funcotator data source directory (for annotation)
+- `qc_pass_30x`, `qc_flag_30x`: Coverage QC thresholds (fraction of target bases covered > 30x) for PASS / FLAG / FAIL
+- `report_exclude_qc`: Coverage QC classes left out of the variant report (default `["FAIL"]`)
 - `report_min_depth`, `report_min_alt`, `report_min_vaf`, `report_max_pop_af`: Filters for the final report (minimum depth, minimum alt reads, minimum VAF, maximum gnomAD population allele frequency); only variants inside the `bed` covered regions are reported
 
 Both pipelines read `config/config.yaml`; `CreatePoN.smk` reads the sample list from `config/samples_normal.yaml` and `AVANTseq.smk` from `config/samples_tumor.yaml`. Run Snakemake from the repository root (or point to your own files with `--configfile`). Please refer to the `config.yaml` file provided in the `config/` folder for detailed descriptions of each parameter.

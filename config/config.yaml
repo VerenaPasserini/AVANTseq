@@ -33,11 +33,16 @@ merged_pon: "/your_path/merged_pon.vcf.gz"  # Output of CreatePoN.smk (custom + 
 germline_resource: "/your_path/af-only-gnomad.hg38.vcf.gz"  # VCF with known germline allele frequencies to help Mutect2 distinguish somatic variants.
 vcf_exac: "/your_path/small_exac_common_3.hg38.vcf"  # Common germline variants (ExAC) used by GetPileupSummaries for contamination estimation.
 
+# Coverage QC (report/hsmetrics_qc.pdf), based on % of target bases covered > 30x:
+qc_pass_30x: 0.8        # PASS if above this fraction
+qc_flag_30x: 0.6        # FLAG if above this fraction (and not PASS), FAIL otherwise
+
 # Final report (merged MAF, maftools summary and oncoplot):
 # (only variants inside the covered regions of the "bed" file above are reported)
 report_min_depth: 20    # minimum total depth (ref + alt reads)
 report_min_alt: 4       # minimum number of reads supporting the variant
 report_min_vaf: 0.10    # minimum variant allele fraction
+report_exclude_qc: ["FAIL"]  # coverage QC classes left out of the report (e.g. ["FAIL", "FLAG"])
 report_max_pop_af: 0.001  # maximum gnomAD population allele frequency (removes common germline variants; 1 = off)
 
 # Funcotator data source directory (for variant annotation):

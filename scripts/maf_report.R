@@ -14,6 +14,16 @@ min_depth <- as.numeric(snakemake@params[["min_depth"]])
 min_alt   <- as.numeric(snakemake@params[["min_alt"]])
 min_vaf   <- as.numeric(snakemake@params[["min_vaf"]])
 max_popaf <- as.numeric(snakemake@params[["max_pop_af"]])   # max gnomAD allele frequency
+exclude_qc <- unlist(snakemake@params[["exclude_qc"]])      # QC classes to leave out (e.g. FAIL)
+
+# Coverage QC from qc_report: leave out samples with an excluded QC class
+qc <- fread(snakemake@input[["qc"]], select = c("SAMPLE", "QC"), colClasses = list(character = "SAMPLE"))
+excluded <- qc$SAMPLE[qc$QC %in% exclude_qc]
+if (length(excluded) > 0)
+  message("Samples excluded because of coverage QC (", paste(exclude_qc, collapse = "/"), "): ",
+          paste(excluded, collapse = ", "), "\n")
+maf_files <- snakemake@input[["mafs"]]
+maf_files <- maf_files[!sub("\\.maf$", "", basename(maf_files)) %in% excluded]
 
 # Covered regions (BED, 0-based start) -> 1-based closed intervals
 bed_lines <- grep("^(#|track|browser)", readLines(bed_file), value = TRUE, invert = TRUE)
@@ -65,7 +75,7 @@ read_sample <- function(f) {
   df
 }
 message("Variants per sample (PASS variants from Funcotator):")
-mut_df <- do.call(rbind, lapply(snakemake@input[["mafs"]], read_sample))
+mut_df <- do.call(rbind, lapply(maf_files, read_sample))
 
 # 2. Harmonise Variant_Classification -------------------------------------------
 if (!is.null(mut_df)) {
