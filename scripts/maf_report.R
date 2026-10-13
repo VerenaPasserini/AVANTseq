@@ -67,9 +67,15 @@ vc_known <- c("Frame_Shift_Del", "Frame_Shift_Ins", "Splice_Site", "Translation_
 # 1. Read, clean and label each sample's MAF -----------------------------------
 read_sample <- function(f) {
   sample <- sub("\\.maf$", "", basename(f))
-  # skip the "#" header lines at the top only ("#" may also occur inside annotation fields)
-  n_header <- sum(cumprod(startsWith(readLines(f, n = 2000), "#")))
-  df <- read.delim(f, skip = n_header, comment.char = "", quote = "", stringsAsFactors = FALSE)
+  # skip the "#" header lines at the top only ("#" may also occur inside annotation fields);
+  # Funcotator MAFs can have many thousands of header lines
+  lines <- readLines(f, warn = FALSE)
+  n_header <- match(FALSE, startsWith(lines, "#")) - 1
+  df <- read.delim(text = lines[-seq_len(n_header)], comment.char = "", quote = "",
+                   stringsAsFactors = FALSE)
+  required <- c("Chromosome", "Start_Position", "End_Position", "t_alt_count", "t_ref_count")
+  if (!all(required %in% names(df)))
+    stop("unexpected MAF format in ", f, ": missing column(s) ", paste(setdiff(required, names(df)), collapse = ", "))
   n_all <- nrow(df)
 
   # keep variants overlapping the covered regions of the BED file

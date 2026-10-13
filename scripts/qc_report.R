@@ -36,9 +36,9 @@ p <- ggplot(hs, aes(x = PCT_TARGET_BASES_30X * 100, y = ZERO_CVG_TARGETS_PCT * 1
   geom_point(alpha = 0.8, size = 2) +
   scale_color_manual(values = qc_colors) +
   scale_x_continuous(breaks = seq(0, 100, 20), limits = c(0, 100)) +
-  geom_vline(xintercept = flag_30x * 100, linetype = "dashed", color = "darkred", size = 0.2) +
-  geom_vline(xintercept = pass_30x * 100, linetype = "dotted", color = "darkgreen", size = 0.2) +
-  geom_hline(yintercept = 1, linetype = "dashed", color = "darkred", size = 0.2) +
+  geom_vline(xintercept = flag_30x * 100, linetype = "dashed", color = "darkred", linewidth = 0.2) +
+  geom_vline(xintercept = pass_30x * 100, linetype = "dotted", color = "darkgreen", linewidth = 0.2) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "darkred", linewidth = 0.2) +
   geom_label_repel(aes(label = SAMPLE), box.padding = 0.35, point.padding = 0.5,
                    segment.color = "grey50", show.legend = FALSE) +
   labs(x = "% target bases with > 30x coverage", y = "% targets not covered", color = "QC") +
