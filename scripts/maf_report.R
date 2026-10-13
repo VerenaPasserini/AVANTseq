@@ -25,11 +25,32 @@ if (length(excluded) > 0)
 maf_files <- snakemake@input[["mafs"]]
 maf_files <- maf_files[!sub("\\.maf$", "", basename(maf_files)) %in% excluded]
 
-# Covered regions (BED, 0-based start) -> 1-based closed intervals
-bed_lines <- grep("^(#|track|browser)", readLines(bed_file), value = TRUE, invert = TRUE)
-bed <- fread(text = bed_lines, header = FALSE, select = 1:3, col.names = c("chr", "start", "end"))
-bed[, `:=`(chr = as.character(chr), start = start + 1L)]
-setkey(bed, chr, start, end)
+# Covered regions (BED, 0-based start) -> 1-based intervals, merged per chromosome
+bed_lines <- sub("\r$", "", readLines(bed_file, warn = FALSE))
+bed_lines <- bed_lines[nzchar(bed_lines) & !grepl("^(#|track|browser)", bed_lines)]
+f <- strsplit(bed_lines, "[[:space:]]+")
+bed <- data.frame(chr   = vapply(f, `[`, "", 1),
+                  start = suppressWarnings(as.numeric(vapply(f, `[`, "", 2))) + 1,
+                  end   = suppressWarnings(as.numeric(vapply(f, `[`, "", 3))))
+bed <- bed[!is.na(bed$start) & !is.na(bed$end), ]          # drops a possible header line
+bed <- bed[order(bed$chr, bed$start), ]
+bed_merged <- lapply(split(bed, bed$chr), function(b) {
+  grp <- cumsum(c(TRUE, b$start[-1] > cummax(b$end)[-nrow(b)] + 1))
+  data.frame(start = as.numeric(tapply(b$start, grp, min)), end = as.numeric(tapply(b$end, grp, max)))
+})
+message(sprintf("BED: %d regions on %d chromosomes", nrow(bed), length(bed_merged)))
+
+# TRUE for variants overlapping a covered region
+in_bed <- function(chr, s, e) {
+  hit <- logical(length(chr))
+  for (ch in intersect(unique(chr), names(bed_merged))) {
+    m <- bed_merged[[ch]]
+    i <- which(chr == ch)
+    k <- findInterval(e[i], m$start)                  # last region starting before the variant end
+    hit[i] <- k > 0 & m$end[pmax(k, 1)] >= s[i]
+  }
+  hit
+}
 
 # Funcotator classifications that maftools does not know -> MAF / maftools names
 vc_map <- c(START_CODON_SNP         = "Translation_Start_Site",
@@ -52,10 +73,8 @@ read_sample <- function(f) {
   n_all <- nrow(df)
 
   # keep variants overlapping the covered regions of the BED file
-  pos <- data.table(chr = as.character(df$Chromosome), start = df$Start_Position,
-                    end = pmax(df$Start_Position, df$End_Position))
-  hit <- unique(foverlaps(pos, bed, type = "any", which = TRUE, nomatch = NULL)$xid)
-  df <- df[sort(hit), , drop = FALSE]
+  df <- df[in_bed(as.character(df$Chromosome), df$Start_Position,
+                  pmax(df$Start_Position, df$End_Position)), , drop = FALSE]
   n_bed <- nrow(df)
 
   df$t_depth <- df$t_alt_count + df$t_ref_count
