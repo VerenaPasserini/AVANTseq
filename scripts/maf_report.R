@@ -14,6 +14,8 @@ min_depth <- as.numeric(snakemake@params[["min_depth"]])
 min_alt   <- as.numeric(snakemake@params[["min_alt"]])
 min_vaf   <- as.numeric(snakemake@params[["min_vaf"]])
 max_popaf <- as.numeric(snakemake@params[["max_pop_af"]])   # max gnomAD allele frequency
+top_genes <- as.numeric(snakemake@params[["top_genes"]])    # number of genes in the oncoplot
+drop_unnamed <- isTRUE(as.logical(snakemake@params[["drop_unnamed"]]))  # drop features without a gene symbol (ENSG IDs)
 exclude_qc <- unlist(snakemake@params[["exclude_qc"]])      # QC classes to leave out (e.g. FAIL)
 
 # Coverage QC from qc_report: leave out samples with an excluded QC class
@@ -81,6 +83,8 @@ read_sample <- function(f) {
   # keep variants overlapping the covered regions of the BED file
   df <- df[in_bed(as.character(df$Chromosome), df$Start_Position,
                   pmax(df$Start_Position, df$End_Position)), , drop = FALSE]
+  # features without an official gene symbol (Funcotator reports the Ensembl ID, e.g. ENSG00000240040)
+  if (drop_unnamed) df <- df[!grepl("^ENSG[0-9]+", df$Hugo_Symbol), , drop = FALSE]
   n_bed <- nrow(df)
 
   df$t_depth <- df$t_alt_count + df$t_ref_count
@@ -93,7 +97,7 @@ read_sample <- function(f) {
   popaf <- suppressWarnings(as.numeric(sub(",.*", "", df$POPAF)))
   df <- df[is.na(popaf) | popaf >= -log10(max_popaf), , drop = FALSE]
 
-  message(sprintf("%-20s all: %5d   in BED: %5d   depth/alt/VAF: %5d   gnomAD AF <= %g: %5d",
+  message(sprintf("%-20s all: %5d   in BED (named genes): %5d   depth/alt/VAF: %5d   gnomAD AF <= %g: %5d",
                   sample, n_all, n_bed, n_reads, max_popaf, nrow(df)))
   if (nrow(df) == 0) return(NULL)
   df$Tumor_Sample_Barcode <- sample
@@ -126,12 +130,40 @@ if (is.null(mut_df)) {
   write.table(mut_df, snakemake@output[["maf"]], sep = "\t", quote = FALSE, row.names = FALSE)
   maf <- read.maf(mut_df)
 
-  pdf(snakemake@output[["summary"]], width = 10, height = 7)
-  plotmafSummary(maf, addStat = "median", dashboard = TRUE)
+  # Colour palette for the mutation types (colour-blind friendly, Tableau 10 based)
+  vc_colors <- c(Missense_Mutation      = "#4C78A8",
+                 Nonsense_Mutation      = "#E45756",
+                 Frame_Shift_Del        = "#B279A2",
+                 Frame_Shift_Ins        = "#9D755D",
+                 In_Frame_Del           = "#72B7B2",
+                 In_Frame_Ins           = "#54A24B",
+                 Splice_Site            = "#F58518",
+                 Translation_Start_Site = "#EECA3B",
+                 Nonstop_Mutation       = "#BAB0AC",
+                 Multi_Hit              = "#3B3B3B")
+
+  pdf(snakemake@output[["summary"]], width = 11, height = 7)
+  plotmafSummary(maf, addStat = "median", dashboard = TRUE, color = vc_colors)
   dev.off()
 
-  pdf(snakemake@output[["oncoplot"]], width = 10, height = 7)
-  tryCatch(oncoplot(maf, draw_titv = FALSE),
+  # Oncoplot: top N genes, title with the actual number shown, margin sized to the longest gene name
+  gene_summary <- getGeneSummary(maf)
+  n_top    <- min(top_genes, nrow(gene_summary))
+  if (n_top == 0) {
+    pdf(snakemake@output[["oncoplot"]]); plot.new()
+    text(0.5, 0.5, "No protein-altering variants to show"); dev.off()
+    quit(save = "no")
+  }
+  genes    <- gene_summary$Hugo_Symbol[seq_len(n_top)]
+  n_alt    <- length(unique(subsetMaf(maf, genes = genes, mafObj = FALSE)$Tumor_Sample_Barcode))
+  n_all    <- as.numeric(maf@summary$summary[maf@summary$ID == "Samples"])
+  title    <- sprintf("Top %d most frequently mutated genes - altered in %d of %d samples (%.0f%%)",
+                      n_top, n_alt, n_all, 100 * n_alt / n_all)
+  gene_mar <- max(5, 0.6 * max(nchar(genes)) + 1)
+
+  pdf(snakemake@output[["oncoplot"]], width = 11, height = max(5, 2.5 + 0.3 * n_top))
+  tryCatch(oncoplot(maf, top = n_top, colors = vc_colors, titleText = title,
+                    gene_mar = gene_mar, draw_titv = FALSE),
            error = function(e) { plot.new(); text(0.5, 0.5, paste("Oncoplot not possible:", conditionMessage(e))) })
   dev.off()
 }

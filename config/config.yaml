@@ -43,6 +43,8 @@ report_min_depth: 20    # minimum total depth (ref + alt reads)
 report_min_alt: 4       # minimum number of reads supporting the variant
 report_min_vaf: 0.10    # minimum variant allele fraction
 report_exclude_qc: ["FAIL"]  # coverage QC classes left out of the report (e.g. ["FAIL", "FLAG"])
+report_drop_unnamed: true  # drop variants in features without a gene symbol (Funcotator shows an ENSG ID)
+report_top_genes: 20     # number of most frequently mutated genes shown in the oncoplot
 report_max_pop_af: 0.001  # maximum gnomAD population allele frequency (removes common germline variants; 1 = off)
 
 # Funcotator data source directory (for variant annotation):
