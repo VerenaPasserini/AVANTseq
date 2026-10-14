@@ -39,6 +39,7 @@ qc_flag_30x: 0.6        # FLAG if above this fraction (and not PASS), FAIL other
 
 # Final report (merged MAF, maftools summary and oncoplot):
 # (only variants inside the covered regions of the "bed" file above are reported)
+report_bed_padding: 10  # bp added on each side of the covered regions (keeps canonical splice sites)
 report_min_depth: 20    # minimum total depth (ref + alt reads)
 report_min_alt: 4       # minimum number of reads supporting the variant
 report_min_vaf: 0.10    # minimum variant allele fraction

@@ -37,6 +37,7 @@ rule maf_report:
         flow=join(config["work_dir"], "report/cohort_flow.pdf"),        # CONSORT-style cohort diagram
         cohort=join(config["work_dir"], "report/cohort_summary.tsv")   # QC, status and variant counts per sample
     params:
+        bed_padding=config.get("report_bed_padding", 10),  # bp added on each side of the BED regions (keeps splice sites)
         min_depth=config.get("report_min_depth", 20),  # minimum total depth (t_ref_count + t_alt_count)
         min_alt=config.get("report_min_alt", 4),       # minimum number of reads supporting the variant
         min_vaf=config.get("report_min_vaf", 0.10),    # minimum variant allele fraction

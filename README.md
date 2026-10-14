@@ -119,6 +119,7 @@ The configuration YAML file should define all necessary file paths and sample na
 - `report_drop_unnamed`: Drop variants in features without an official gene symbol (shown by Funcotator as Ensembl IDs, e.g. `ENSG00000240040`; default `true`)
 - `report_gene_margin`: Oncoplot margin for gene names (0 = automatic, based on the longest gene name)
 - `report_top_genes`: Number of most frequently mutated genes shown in the oncoplot (default 20)
+- `report_bed_padding`: bp added on each side of the `bed` covered regions for the report (default 10, keeps canonical splice sites)
 - `report_min_depth`, `report_min_alt`, `report_min_vaf`, `report_max_pop_af`: Filters for the final report (minimum depth, minimum alt reads, minimum VAF, maximum gnomAD population allele frequency); only variants inside the `bed` covered regions are reported
 
 Both pipelines read `config/config.yaml`; `CreatePoN.smk` reads the sample list from `config/samples_normal.yaml` and `AVANTseq.smk` from `config/samples_tumor.yaml`. Run Snakemake from the repository root (or point to your own files with `--configfile`). Please refer to the `config.yaml` file provided in the `config/` folder for detailed descriptions of each parameter.

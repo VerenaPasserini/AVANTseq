@@ -10,6 +10,7 @@ sink(log); sink(log, type = "message")
 suppressPackageStartupMessages({ library(maftools); library(data.table) })
 
 bed_file  <- snakemake@input[["bed"]]
+bed_pad   <- as.numeric(snakemake@params[["bed_padding"]])  # bp added on each side of the BED regions
 min_depth <- as.numeric(snakemake@params[["min_depth"]])
 min_alt   <- as.numeric(snakemake@params[["min_alt"]])
 min_vaf   <- as.numeric(snakemake@params[["min_vaf"]])
@@ -34,15 +35,15 @@ bed_lines <- sub("\r$", "", readLines(bed_file, warn = FALSE))
 bed_lines <- bed_lines[nzchar(bed_lines) & !grepl("^(#|track|browser)", bed_lines)]
 f <- strsplit(bed_lines, "[[:space:]]+")
 bed <- data.frame(chr   = vapply(f, `[`, "", 1),
-                  start = suppressWarnings(as.numeric(vapply(f, `[`, "", 2))) + 1,
-                  end   = suppressWarnings(as.numeric(vapply(f, `[`, "", 3))))
+                  start = suppressWarnings(as.numeric(vapply(f, `[`, "", 2))) + 1 - bed_pad,
+                  end   = suppressWarnings(as.numeric(vapply(f, `[`, "", 3))) + bed_pad)
 bed <- bed[!is.na(bed$start) & !is.na(bed$end), ]          # drops a possible header line
 bed <- bed[order(bed$chr, bed$start), ]
 bed_merged <- lapply(split(bed, bed$chr), function(b) {
   grp <- cumsum(c(TRUE, b$start[-1] > cummax(b$end)[-nrow(b)] + 1))
   data.frame(start = as.numeric(tapply(b$start, grp, min)), end = as.numeric(tapply(b$end, grp, max)))
 })
-message(sprintf("BED: %d regions on %d chromosomes", nrow(bed), length(bed_merged)))
+message(sprintf("BED: %d regions on %d chromosomes, padded by %g bp on each side", nrow(bed), length(bed_merged), bed_pad))
 
 # TRUE for variants overlapping a covered region
 in_bed <- function(chr, s, e) {
@@ -85,8 +86,9 @@ read_sample <- function(f) {
   n_all <- nrow(df)
 
   # keep variants overlapping the covered regions of the BED file
-  df <- df[in_bed(as.character(df$Chromosome), df$Start_Position,
-                  pmax(df$Start_Position, df$End_Position)), , drop = FALSE]
+  keep <- in_bed(as.character(df$Chromosome), df$Start_Position, pmax(df$Start_Position, df$End_Position))
+  dropped <- sort(table(df$Variant_Classification[!keep]), decreasing = TRUE)
+  df <- df[keep, , drop = FALSE]
   # features without an official gene symbol (Funcotator reports the Ensembl ID, e.g. ENSG00000240040)
   if (drop_unnamed) df <- df[!grepl("^ENSG[0-9]+", df$Hugo_Symbol), , drop = FALSE]
   n_bed <- nrow(df)
@@ -103,6 +105,8 @@ read_sample <- function(f) {
 
   message(sprintf("%-20s all: %5d   in BED (named genes): %5d   depth/alt/VAF: %5d   gnomAD AF <= %g: %5d",
                   sample, n_all, n_bed, n_reads, max_popaf, nrow(df)))
+  if (length(dropped) > 0)
+    message(sprintf("%-20s   outside BED: %s", "", paste(sprintf("%s %d", names(dropped), dropped), collapse = ", ")))
   counts <<- rbind(counts, data.frame(SAMPLE = sample, variants_all = n_all, variants_in_bed = n_bed,
                                       variants_depth_vaf = n_reads, variants_reported = nrow(df)))
   if (nrow(df) == 0) return(NULL)
@@ -122,11 +126,11 @@ n_analysed  <- length(analysed)
 cohort <- merge(data.frame(SAMPLE = all_samples), qc, by = "SAMPLE", all.x = TRUE)
 cohort <- merge(cohort, counts, by = "SAMPLE", all.x = TRUE)
 cohort$status <- ifelse(cohort$SAMPLE %in% excluded, "excluded (coverage QC)",
-                 ifelse(cohort$SAMPLE %in% no_variants, "analysed, no variant passing filters",
+                 ifelse(cohort$SAMPLE %in% no_variants, "analysed, no somatic variant passing filters",
                         "analysed"))
 write.table(cohort, snakemake@output[["cohort"]], sep = "\t", quote = FALSE, row.names = FALSE)
 if (length(no_variants) > 0)
-  message("WARNING: no variant passed the filters in sample(s): ", paste(no_variants, collapse = ", "),
+  message("WARNING: no somatic variant passed the filters in sample(s): ", paste(no_variants, collapse = ", "),
           " (they are counted in the cohort but do not appear in the plots)")
 
 ids <- function(x) if (length(x) == 0) "" else paste(strwrap(paste(x, collapse = ", "), width = 45), collapse = "\n")
@@ -147,18 +151,18 @@ draw_flow <- function(file) {
   box(0.32, 0.80, 0.42, 0.11, sprintf("Samples sequenced: n = %d", length(all_samples)))
   box(0.32, 0.50, 0.42, 0.14, sprintf("Samples analysed: n = %d", n_analysed),
       if (length(flagged)) paste0("borderline coverage (FLAG): ", ids(flagged)) else "")
-  box(0.32, 0.18, 0.42, 0.11, sprintf("Samples with reported variants: n = %d", n_analysed - length(no_variants)))
+  box(0.32, 0.18, 0.42, 0.11, sprintf("Samples with somatic variants: n = %d", n_analysed - length(no_variants)))
   arr(0.32, 0.745, 0.32, 0.57); arr(0.32, 0.43, 0.32, 0.235)
   # exclusion boxes
   box(0.77, 0.65, 0.40, 0.17, sprintf("Excluded: insufficient coverage\n(%s): n = %d", paste(exclude_qc, collapse = "/"), length(excluded)),
       ids(excluded), fill = "#FDF0F0", border = "#E45756")
-  box(0.77, 0.34, 0.40, 0.17, sprintf("No variant passing the filters:\nn = %d", length(no_variants)),
+  box(0.77, 0.34, 0.40, 0.17, sprintf("Samples without somatic variants\npassing the filters: n = %d", length(no_variants)),
       ids(no_variants), fill = "#FFF7E8", border = "#F58518")
   arr(0.32, 0.65, 0.57, 0.65); arr(0.32, 0.34, 0.57, 0.34)
   grid.text(paste(sprintf("Coverage QC: PASS > %g%%, FLAG > %g%% of target bases covered > 30x.",
                           100 * as.numeric(snakemake@params[["pass_30x"]]), 100 * as.numeric(snakemake@params[["flag_30x"]])),
-                  sprintf("Variant filters: covered regions, depth >= %g, alt reads >= %g, VAF >= %g, gnomAD AF <= %g.",
-                          min_depth, min_alt, min_vaf, max_popaf), sep = "\n"),
+                  sprintf("Variant filters: covered regions (+%g bp), depth >= %g, alt reads >= %g, VAF >= %g, gnomAD AF <= %g.",
+                          bed_pad, min_depth, min_alt, min_vaf, max_popaf), sep = "\n"),
             0.5, 0.045, gp = gpar(fontsize = 8, col = "#666666"))
   dev.off()
 }
