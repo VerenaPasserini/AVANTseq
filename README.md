@@ -11,7 +11,7 @@
 
 ## Workflow overview
 
-![AVANTseq workflow: the CreatePoN pipeline builds a merged custom + public Panel of Normals from normal samples; the AVANTseq pipeline trims reads (fastp), aligns (BWA-MEM), marks duplicates and recalibrates base qualities (GATK BQSR), calls somatic variants with Mutect2 using the merged PoN, filters using contamination and read orientation bias models, normalizes (vt) and annotates (Funcotator) to MAF, with FastQC, fastp, samtools, MultiQC, CollectHsMetrics and multiBamSummary QC](docs/avantseq-workflow.png)
+![AVANTseq workflow: the CreatePoN pipeline builds a merged custom + public Panel of Normals from normal samples; the AVANTseq pipeline trims reads (fastp), aligns (BWA-MEM), marks duplicates and recalibrates base qualities (GATK BQSR), calls somatic variants with Mutect2 using the merged PoN, filters using contamination and read orientation bias models, normalizes (vt) and annotates (Funcotator) to MAF, with FastQC, fastp, samtools, MultiQC, CollectHsMetrics and multiBamSummary QC, followed by a report with coverage QC, variant filtering, cohort overview and maftools summary and oncoplot](docs/avantseq-workflow.png)
 
 <details>
 <summary>Show the full Snakemake rule graphs</summary>
