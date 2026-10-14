@@ -48,3 +48,4 @@ rule all:
         join(config["work_dir"], "report/hsmetrics_qc.pdf"),
         join(config["work_dir"], "report/maf_summary.pdf"),
         join(config["work_dir"], "report/oncoplot.pdf"),
+        join(config["work_dir"], "report/cohort_flow.pdf"),

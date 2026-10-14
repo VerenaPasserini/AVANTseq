@@ -33,7 +33,9 @@ rule maf_report:
     output:
         maf=join(config["work_dir"], "report/all_samples_filtered.maf"),
         summary=join(config["work_dir"], "report/maf_summary.pdf"),
-        oncoplot=join(config["work_dir"], "report/oncoplot.pdf")
+        oncoplot=join(config["work_dir"], "report/oncoplot.pdf"),
+        flow=join(config["work_dir"], "report/cohort_flow.pdf"),        # CONSORT-style cohort diagram
+        cohort=join(config["work_dir"], "report/cohort_summary.tsv")   # QC, status and variant counts per sample
     params:
         min_depth=config.get("report_min_depth", 20),  # minimum total depth (t_ref_count + t_alt_count)
         min_alt=config.get("report_min_alt", 4),       # minimum number of reads supporting the variant
@@ -42,7 +44,9 @@ rule maf_report:
         exclude_qc=config.get("report_exclude_qc", ["FAIL"]),  # QC classes left out of the report
         top_genes=config.get("report_top_genes", 20),  # number of genes shown in the oncoplot
         drop_unnamed=config.get("report_drop_unnamed", True),  # drop features without a gene symbol (ENSG IDs)
-        gene_mar=config.get("report_gene_margin", 0)  # oncoplot margin for gene names (0 = automatic)
+        gene_mar=config.get("report_gene_margin", 0),  # oncoplot margin for gene names (0 = automatic)
+        pass_30x=config.get("qc_pass_30x", 0.8),       # shown in the cohort diagram
+        flag_30x=config.get("qc_flag_30x", 0.6)
     log:
         join(config["work_dir"], "report/maf_report.log")
     message:

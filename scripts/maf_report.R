@@ -20,7 +20,8 @@ drop_unnamed <- isTRUE(as.logical(snakemake@params[["drop_unnamed"]]))  # drop f
 exclude_qc <- unlist(snakemake@params[["exclude_qc"]])      # QC classes to leave out (e.g. FAIL)
 
 # Coverage QC from qc_report: leave out samples with an excluded QC class
-qc <- fread(snakemake@input[["qc"]], select = c("SAMPLE", "QC"), colClasses = list(character = "SAMPLE"))
+qc <- fread(snakemake@input[["qc"]], select = c("SAMPLE", "QC", "PCT_TARGET_BASES_30X"),
+            colClasses = list(character = "SAMPLE"))
 excluded <- qc$SAMPLE[qc$QC %in% exclude_qc]
 if (length(excluded) > 0)
   message("Samples excluded because of coverage QC (", paste(exclude_qc, collapse = "/"), "): ",
@@ -68,6 +69,8 @@ vc_known <- c("Frame_Shift_Del", "Frame_Shift_Ins", "Splice_Site", "Translation_
               "IGR", "Intron", "RNA", "lincRNA", "Splice_Region", "Targeted_Region", "Unknown")
 
 # 1. Read, clean and label each sample's MAF -----------------------------------
+counts <- data.frame(SAMPLE = character(), variants_all = integer(), variants_in_bed = integer(),
+                     variants_depth_vaf = integer(), variants_reported = integer())  # per-sample counts
 read_sample <- function(f) {
   sample <- sub("\\.maf$", "", basename(f))
   # skip the "#" header lines at the top only ("#" may also occur inside annotation fields);
@@ -100,12 +103,65 @@ read_sample <- function(f) {
 
   message(sprintf("%-20s all: %5d   in BED (named genes): %5d   depth/alt/VAF: %5d   gnomAD AF <= %g: %5d",
                   sample, n_all, n_bed, n_reads, max_popaf, nrow(df)))
+  counts <<- rbind(counts, data.frame(SAMPLE = sample, variants_all = n_all, variants_in_bed = n_bed,
+                                      variants_depth_vaf = n_reads, variants_reported = nrow(df)))
   if (nrow(df) == 0) return(NULL)
   df$Tumor_Sample_Barcode <- sample
   df
 }
 message("Variants per sample (PASS variants from Funcotator):")
 mut_df <- do.call(rbind, lapply(maf_files, read_sample))
+
+# 1b. Cohort summary: table + CONSORT-style flow diagram -------------------------
+all_samples <- sub("\\.maf$", "", basename(snakemake@input[["mafs"]]))
+analysed    <- sub("\\.maf$", "", basename(maf_files))
+no_variants <- counts$SAMPLE[counts$variants_reported == 0]
+flagged     <- intersect(analysed, qc$SAMPLE[qc$QC == "FLAG"])
+n_analysed  <- length(analysed)
+
+cohort <- merge(data.frame(SAMPLE = all_samples), qc, by = "SAMPLE", all.x = TRUE)
+cohort <- merge(cohort, counts, by = "SAMPLE", all.x = TRUE)
+cohort$status <- ifelse(cohort$SAMPLE %in% excluded, "excluded (coverage QC)",
+                 ifelse(cohort$SAMPLE %in% no_variants, "analysed, no variant passing filters",
+                        "analysed"))
+write.table(cohort, snakemake@output[["cohort"]], sep = "\t", quote = FALSE, row.names = FALSE)
+if (length(no_variants) > 0)
+  message("WARNING: no variant passed the filters in sample(s): ", paste(no_variants, collapse = ", "),
+          " (they are counted in the cohort but do not appear in the plots)")
+
+ids <- function(x) if (length(x) == 0) "" else paste(strwrap(paste(x, collapse = ", "), width = 45), collapse = "\n")
+draw_flow <- function(file) {
+  library(grid)
+  pdf(file, width = 8.5, height = 7)
+  grid.newpage()
+  box <- function(x, y, w, h, title, body = "", fill = "#F2F5F8", border = "#4C78A8") {
+    grid.roundrect(x, y, w, h, r = unit(2, "mm"), gp = gpar(fill = fill, col = border, lwd = 1.5))
+    grid.text(title, x, y + unit(if (nzchar(body)) 0.25 else 0, "in"), gp = gpar(fontsize = 12, fontface = "bold"))
+    if (nzchar(body)) grid.text(body, x, y - unit(0.12, "in"), gp = gpar(fontsize = 9.5, col = "#333333"), vjust = 1)
+  }
+  arr <- function(x0, y0, x1, y1) grid.lines(c(x0, x1), c(y0, y1),
+            arrow = arrow(length = unit(2.5, "mm"), type = "closed"), gp = gpar(col = "#555555", fill = "#555555"))
+  grid.text("Cohort overview", 0.5, 0.95, gp = gpar(fontsize = 15, fontface = "bold"))
+  # main column
+  box(0.32, 0.80, 0.42, 0.11, sprintf("Samples sequenced: n = %d", length(all_samples)))
+  box(0.32, 0.50, 0.42, 0.14, sprintf("Samples analysed: n = %d", n_analysed),
+      if (length(flagged)) paste0("borderline coverage (FLAG): ", ids(flagged)) else "")
+  box(0.32, 0.18, 0.42, 0.11, sprintf("Samples with reported variants: n = %d", n_analysed - length(no_variants)))
+  arr(0.32, 0.745, 0.32, 0.57); arr(0.32, 0.43, 0.32, 0.235)
+  # exclusion boxes
+  box(0.77, 0.65, 0.40, 0.17, sprintf("Excluded: insufficient coverage\n(%s): n = %d", paste(exclude_qc, collapse = "/"), length(excluded)),
+      ids(excluded), fill = "#FDF0F0", border = "#E45756")
+  box(0.77, 0.34, 0.40, 0.17, sprintf("No variant passing the filters:\nn = %d", length(no_variants)),
+      ids(no_variants), fill = "#FFF7E8", border = "#F58518")
+  arr(0.32, 0.65, 0.57, 0.65); arr(0.32, 0.34, 0.57, 0.34)
+  grid.text(paste(sprintf("Coverage QC: PASS > %g%%, FLAG > %g%% of target bases covered > 30x.",
+                          100 * as.numeric(snakemake@params[["pass_30x"]]), 100 * as.numeric(snakemake@params[["flag_30x"]])),
+                  sprintf("Variant filters: covered regions, depth >= %g, alt reads >= %g, VAF >= %g, gnomAD AF <= %g.",
+                          min_depth, min_alt, min_vaf, max_popaf), sep = "\n"),
+            0.5, 0.045, gp = gpar(fontsize = 8, col = "#666666"))
+  dev.off()
+}
+draw_flow(snakemake@output[["flow"]])
 
 # 2. Harmonise Variant_Classification -------------------------------------------
 if (!is.null(mut_df)) {
@@ -157,14 +213,13 @@ if (is.null(mut_df)) {
   }
   genes    <- gene_summary$Hugo_Symbol[seq_len(n_top)]
   n_alt    <- length(unique(subsetMaf(maf, genes = genes, mafObj = FALSE)$Tumor_Sample_Barcode))
-  n_all    <- as.numeric(maf@summary$summary[maf@summary$ID == "Samples"])
-  title    <- sprintf("Top %d most frequently mutated genes - altered in %d of %d samples (%.0f%%)",
-                      n_top, n_alt, n_all, 100 * n_alt / n_all)
+  title    <- sprintf("Top %d most frequently mutated genes - altered in %d of %d analysed samples (%.0f%%)",
+                      n_top, n_alt, n_analysed, 100 * n_alt / n_analysed)
   # margin (in text lines) for the gene names: automatic from the longest name, or set in the config
   gene_mar <- if (gene_mar_cfg > 0) gene_mar_cfg else max(8, 1.0 * max(nchar(genes)) + 3)
 
   pdf(snakemake@output[["oncoplot"]], width = 11, height = max(5, 2.5 + 0.3 * n_top))
-  tryCatch(oncoplot(maf, top = n_top, colors = vc_colors, titleText = title,
+  tryCatch(oncoplot(maf, top = n_top, colors = vc_colors, titleText = title, cohortSize = n_analysed,
                     gene_mar = gene_mar, draw_titv = FALSE),
            error = function(e) { plot.new(); text(0.5, 0.5, paste("Oncoplot not possible:", conditionMessage(e))) })
   dev.off()

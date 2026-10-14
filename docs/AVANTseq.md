@@ -110,6 +110,9 @@ The AVANTseq pipeline generates the following output files for each sample, grou
 - `report/all_samples_filtered.maf`  
   All samples merged into one MAF, leaving out samples whose coverage QC class is in `report_exclude_qc` (default: FAIL), after filtering: variants inside the covered regions (`bed`), total depth ≥ `report_min_depth` (default 20), alt reads ≥ `report_min_alt` (default 4), VAF ≥ `report_min_vaf` (default 0.10) and gnomAD population allele frequency ≤ `report_max_pop_af` (default 0.001, taken from the Mutect2 `POPAF` field) to remove remaining germline variants in tumor-only mode. Funcotator classifications unknown to maftools are recoded (`START_CODON_*` → `Translation_Start_Site`, `DE_NOVO_START_*` → `5'UTR`, `COULD_NOT_DETERMINE` → `Unknown`); any other unrecognised value is reported in `report/maf_report.log`. The log also lists the number of variants per sample before and after each filter.
 
+- `report/cohort_flow.pdf`, `report/cohort_summary.tsv`  
+  CONSORT-style overview of the cohort: samples sequenced, excluded for insufficient coverage (with IDs), analysed (borderline FLAG samples listed), and samples without any variant passing the filters (with IDs). The table lists the QC class, status and the number of variants after each filter for every sample.
+
 - `report/maf_summary.pdf`, `report/oncoplot.pdf`  
   Cohort summary and oncoplot generated with **maftools**. Samples without any variant passing the filters are listed in `report/maf_report.log` and do not appear in the plots.  
   [maftools documentation](https://bioconductor.org/packages/maftools/)
