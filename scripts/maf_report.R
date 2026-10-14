@@ -135,6 +135,7 @@ draw_flow <- function(file) {
   pdf(file, width = 8.5, height = 7)
   grid.newpage()
   box <- function(x, y, w, h, title, body = "", fill = "#F2F5F8", border = "#4C78A8") {
+    x <- unit(x, "npc"); y <- unit(y, "npc"); w <- unit(w, "npc"); h <- unit(h, "npc")
     grid.roundrect(x, y, w, h, r = unit(2, "mm"), gp = gpar(fill = fill, col = border, lwd = 1.5))
     grid.text(title, x, y + unit(if (nzchar(body)) 0.25 else 0, "in"), gp = gpar(fontsize = 12, fontface = "bold"))
     if (nzchar(body)) grid.text(body, x, y - unit(0.12, "in"), gp = gpar(fontsize = 9.5, col = "#333333"), vjust = 1)
