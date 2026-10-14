@@ -15,6 +15,7 @@ min_alt   <- as.numeric(snakemake@params[["min_alt"]])
 min_vaf   <- as.numeric(snakemake@params[["min_vaf"]])
 max_popaf <- as.numeric(snakemake@params[["max_pop_af"]])   # max gnomAD allele frequency
 top_genes <- as.numeric(snakemake@params[["top_genes"]])    # number of genes in the oncoplot
+gene_mar_cfg <- as.numeric(snakemake@params[["gene_mar"]])  # 0 = automatic
 drop_unnamed <- isTRUE(as.logical(snakemake@params[["drop_unnamed"]]))  # drop features without a gene symbol (ENSG IDs)
 exclude_qc <- unlist(snakemake@params[["exclude_qc"]])      # QC classes to leave out (e.g. FAIL)
 
@@ -134,7 +135,7 @@ if (is.null(mut_df)) {
   vc_colors <- c(Missense_Mutation      = "#4C78A8",
                  Nonsense_Mutation      = "#E45756",
                  Frame_Shift_Del        = "#B279A2",
-                 Frame_Shift_Ins        = "#9D755D",
+                 Frame_Shift_Ins        = "#FF9DA7",
                  In_Frame_Del           = "#72B7B2",
                  In_Frame_Ins           = "#54A24B",
                  Splice_Site            = "#F58518",
@@ -159,7 +160,8 @@ if (is.null(mut_df)) {
   n_all    <- as.numeric(maf@summary$summary[maf@summary$ID == "Samples"])
   title    <- sprintf("Top %d most frequently mutated genes - altered in %d of %d samples (%.0f%%)",
                       n_top, n_alt, n_all, 100 * n_alt / n_all)
-  gene_mar <- max(5, 0.6 * max(nchar(genes)) + 1)
+  # margin (in text lines) for the gene names: automatic from the longest name, or set in the config
+  gene_mar <- if (gene_mar_cfg > 0) gene_mar_cfg else max(8, 1.0 * max(nchar(genes)) + 3)
 
   pdf(snakemake@output[["oncoplot"]], width = 11, height = max(5, 2.5 + 0.3 * n_top))
   tryCatch(oncoplot(maf, top = n_top, colors = vc_colors, titleText = title,

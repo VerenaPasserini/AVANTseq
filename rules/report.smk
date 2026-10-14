@@ -41,7 +41,8 @@ rule maf_report:
         max_pop_af=config.get("report_max_pop_af", 0.001),  # maximum gnomAD population allele frequency
         exclude_qc=config.get("report_exclude_qc", ["FAIL"]),  # QC classes left out of the report
         top_genes=config.get("report_top_genes", 20),  # number of genes shown in the oncoplot
-        drop_unnamed=config.get("report_drop_unnamed", True)  # drop features without a gene symbol (ENSG IDs)
+        drop_unnamed=config.get("report_drop_unnamed", True),  # drop features without a gene symbol (ENSG IDs)
+        gene_mar=config.get("report_gene_margin", 0)  # oncoplot margin for gene names (0 = automatic)
     log:
         join(config["work_dir"], "report/maf_report.log")
     message:
